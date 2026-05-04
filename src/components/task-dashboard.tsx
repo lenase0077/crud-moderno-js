@@ -249,11 +249,18 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
   const getSubtasks = (parentId: number) =>
     tasks.filter((t) => t.parentId === parentId);
 
+  // Helper to serialize dates from server
+  const serializeTask = (task: any): Task => ({
+    ...task,
+    dueDate: task.dueDate ? task.dueDate.toISOString() : null,
+    createdAt: task.createdAt ? task.createdAt.toISOString() : new Date().toISOString(),
+  });
+
   const handleCreateTask = async (formData: FormData) => {
     try {
-      await createTask(formData);
+      const newTask = await createTask(formData);
+      setTasks((prev) => [...prev, serializeTask(newTask)]);
       toast.success("Tarea creada exitosamente");
-      window.location.reload();
     } catch (error) {
       toast.error("Error al crear la tarea");
     }
@@ -262,9 +269,12 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
   const handleUpdateTask = async (formData: FormData) => {
     if (!editingTask) return;
     try {
-      await updateTask(editingTask.id, formData);
+      const updated = await updateTask(editingTask.id, formData);
+      setTasks((prev) =>
+        prev.map((t) => (t.id === updated.id ? serializeTask(updated) : t))
+      );
       toast.success("Tarea actualizada");
-      window.location.reload();
+      setIsFormOpen(false);
     } catch (error) {
       toast.error("Error al actualizar");
     }
@@ -273,10 +283,10 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
   const handleCreateSubtask = async (formData: FormData) => {
     if (!parentTaskId) return;
     try {
-      await createTask(formData);
+      const newSubtask = await createTask(formData);
+      setTasks((prev) => [...prev, serializeTask(newSubtask)]);
       toast.success("Subtarea creada");
       setIsSubtaskFormOpen(false);
-      window.location.reload();
     } catch (error) {
       toast.error("Error al crear subtarea");
     }
@@ -286,9 +296,10 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
     if (!deletingTask) return;
     try {
       await deleteTask(deletingTask.id);
+      setTasks((prev) => prev.filter((t) => t.id !== deletingTask.id));
       toast.success("Tarea eliminada");
       setIsDeleteOpen(false);
-      window.location.reload();
+      setDeletingTask(null);
     } catch (error) {
       toast.error("Error al eliminar");
     }
@@ -296,9 +307,11 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
 
   const handlePromoteSubtask = async (subtaskId: number) => {
     try {
-      await moveTask(subtaskId, null);
+      const updated = await moveTask(subtaskId, null);
+      setTasks((prev) =>
+        prev.map((t) => (t.id === updated.id ? serializeTask(updated) : t))
+      );
       toast.success("Subtarea convertida a tarea");
-      window.location.reload();
     } catch (error) {
       toast.error("Error al promover subtarea");
     }
