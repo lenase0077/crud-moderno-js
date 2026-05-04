@@ -93,6 +93,9 @@ git commit -m "feat: configure turso database with drizzle orm and initial schem
 
 **Estado:** ✅ COMPLETADA
 
+### Nota:
+- `next.config.ts` usa `serverActions: { bodySizeLimit: "2mb" }` (en Next.js 16 no acepta `true` directamente)
+
 ### Acciones realizadas:
 - ✅ 3.1: Activadas Server Actions en `next.config.ts`
 - ✅ 3.2: Creado `src/app/actions.ts` con las siguientes funciones:
@@ -151,29 +154,40 @@ git commit -m "feat: add shadcn ui components and theme configuration"
 
 ## 📌 Fase 5: Página Principal y CRUD UI
 
-**Estado:** ⬜ PENDIENTE
+**Estado:** ✅ COMPLETADA
 
-### 5.1: Layout base
-- Fondo sutil (`bg-slate-50`)
-- Navegación limpia
+### Dependencias instaladas:
+```bash
+npm install react-hook-form zod @hookform/resolvers date-fns
+```
 
-### 5.2: Página principal (`src/app/page.tsx`)
-- Fetch inicial de tasks con Server Action
-- Grid de Cards (`rounded-2xl`, `shadow-sm`)
-- Campos: Título, descripción truncada, status con Badge, prioridad, fecha límite
-- Botones: Editar (Dialog), Eliminar (confirmación)
+### Componentes creados:
 
-### 5.3: Formularios
-- Dialog modal para Crear/Editar
-- Validación con **Zod** + **React Hook Form**
-  ```bash
-  npm install react-hook-form zod @hookform/resolvers
-  ```
-- Feedback visual en errores
+| Componente | Archivo | Descripción |
+|---|---|---|
+| `EmptyState` | `src/components/empty-state.tsx` | Estado vacío con icono, mensaje y CTA |
+| `TaskCard` | `src/components/task-card.tsx` | Card de tarea con badges, hover actions, fechas |
+| `TaskForm` | `src/components/task-form.tsx` | Modal crear/editar con React Hook Form + Zod |
+| `DeleteDialog` | `src/components/delete-dialog.tsx` | Confirmación de eliminación con icono de alerta |
+| `TaskDashboard` | `src/components/task-dashboard.tsx` | Client Component con toda la lógica interactiva |
 
-### 5.4: Estados vacíos
-- Mensaje/ilustración cuando no hay tareas
-- Botón CTA prominente
+### Página principal (`src/app/page.tsx`):
+- Server Component que hace `getTasks()`
+- Serializa fechas a strings para pasar al Client Component
+- Renderiza `TaskDashboard`
+
+### Features implementadas:
+- ✅ Header sticky con blur backdrop
+- ✅ Buscador de tareas en tiempo real
+- ✅ Filtros por estado (Todas, Pendientes, En progreso, Completadas)
+- ✅ Toggle vista Grid / List
+- ✅ Cards con hover effects (elevar + mostrar botones)
+- ✅ Badges de estado con colores (ámbar, azul, esmeralda)
+- ✅ Badges de prioridad con colores (gris, naranja, rosa)
+- ✅ Formulario validado con Zod (título obligatorio, máximos caracteres)
+- ✅ Modal de eliminación con confirmación
+- ✅ Toasts de éxito/error con Sonner
+- ✅ Fechas formateadas con `date-fns` en español
 
 ### Commit:
 ```bash
