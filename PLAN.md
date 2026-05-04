@@ -339,26 +339,29 @@ git commit -m "feat: redesign as Kanban board with Trello-style columns and card
 
 ## 📌 Fase 9: Deploy en Vercel
 
-**Estado:** ⬜ PENDIENTE
+**Estado:** ✅ COMPLETADA
 
-### 9.1: Preparar para producción
-- Verificar `.env.local` en `.gitignore`
-- Verificar `next.config.ts`
+### URL de producción:
+- **Alias principal:** https://crud-moderno-js.vercel.app
+- **Deploy directo:** https://crud-moderno-4j5srvwsl-leandros-projects-946583c6.vercel.app
 
-### 9.2: Crear repo en GitHub
-```bash
-gh repo create nombre-del-proyecto --public --source=. --push
-```
-*(O crear manualmente en https://github.com/new)*
-
-### 9.3: Conectar a Vercel
-1. Ir a https://vercel.com → Importar proyecto desde GitHub
-2. En **Environment Variables**, agregar:
+### Pasos realizados:
+1. ✅ Verificado `.env.local` en `.gitignore`
+2. ✅ Push a GitHub: `git push origin master`
+3. ✅ Login en Vercel CLI: `npx vercel login`
+4. ✅ Deploy inicial: `npx vercel --prod`
+5. ✅ Configuradas variables de entorno en Vercel:
    - `TURSO_DATABASE_URL`
    - `TURSO_AUTH_TOKEN`
-3. Deploy
+   - `ACCESS_CODE`
+6. ✅ Re-deploy exitoso
 
-### Commit final de fase:
+### Nota importante:
+- El build inicial falló por falta de variables de entorno.
+- Se configuraron via `npx vercel env add` y se re-deployó.
+- Build exitoso en ~32 segundos.
+
+### Commit:
 ```bash
 git add .
 git commit -m "chore: prepare for vercel deployment"
