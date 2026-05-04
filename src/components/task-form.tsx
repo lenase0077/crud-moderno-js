@@ -43,10 +43,11 @@ interface TaskFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   task?: Task | null;
+  defaultStatus?: string;
   onSubmit: (formData: FormData) => Promise<void>;
 }
 
-export function TaskForm({ open, onOpenChange, task, onSubmit }: TaskFormProps) {
+export function TaskForm({ open, onOpenChange, task, defaultStatus = "pending", onSubmit }: TaskFormProps) {
   const isEditing = !!task;
 
   const {
@@ -59,7 +60,7 @@ export function TaskForm({ open, onOpenChange, task, onSubmit }: TaskFormProps) 
     defaultValues: {
       title: "",
       description: "",
-      status: "pending",
+      status: defaultStatus as "pending" | "in_progress" | "completed",
       priority: "medium",
       dueDate: "",
     },
@@ -80,7 +81,7 @@ export function TaskForm({ open, onOpenChange, task, onSubmit }: TaskFormProps) 
       reset({
         title: "",
         description: "",
-        status: "pending",
+        status: defaultStatus as "pending" | "in_progress" | "completed",
         priority: "medium",
         dueDate: "",
       });

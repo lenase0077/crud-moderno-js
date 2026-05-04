@@ -18,8 +18,6 @@ import {
 import {
   Plus,
   Search,
-  LayoutGrid,
-  List,
   CheckCircle2,
   Circle,
   Clock,
@@ -27,18 +25,20 @@ import {
   Command as CommandIcon,
   Moon,
   Sun,
+  MoreHorizontal,
+  ArrowUpFromLine,
+  GripVertical,
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   DndContext,
-  closestCenter,
+  closestCorners,
   KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
   DragEndEvent,
-  DragOverEvent,
   DragOverlay,
   DragStartEvent,
 } from "@dnd-kit/core";
@@ -52,8 +52,6 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { EmptyState } from "@/components/empty-state";
-import { TaskCard } from "@/components/task-card";
 import { TaskForm } from "@/components/task-form";
 import { SubtaskForm } from "@/components/subtask-form";
 import { DeleteDialog } from "@/components/delete-dialog";
@@ -64,6 +62,7 @@ import {
   deleteTask,
   reorderTask,
   moveTask,
+  updateTaskStatus,
 } from "@/app/actions";
 
 interface Task {
@@ -82,22 +81,28 @@ interface TaskDashboardProps {
   initialTasks: Task[];
 }
 
-function SortableTaskCard({
+const COLUMNS = [
+  { id: "pending", title: "Pendientes", color: "from-amber-500 to-orange-500", dot: "bg-amber-500" },
+  { id: "in_progress", title: "En progreso", color: "from-blue-500 to-indigo-500", dot: "bg-indigo-500" },
+  { id: "completed", title: "Completadas", color: "from-emerald-500 to-teal-500", dot: "bg-emerald-500" },
+] as const;
+
+function KanbanCard({
   task,
+  subtasks,
   onEdit,
   onDelete,
   onAddSubtask,
   onPromoteSubtask,
-  subtasks,
-  isDragOverlay,
+  isOverlay,
 }: {
   task: Task;
+  subtasks: Task[];
   onEdit: (task: Task) => void;
   onDelete: (task: Task) => void;
   onAddSubtask: (parentId: number) => void;
   onPromoteSubtask: (subtaskId: number) => void;
-  subtasks: Task[];
-  isDragOverlay?: boolean;
+  isOverlay?: boolean;
 }) {
   const {
     attributes,
@@ -106,25 +111,237 @@ function SortableTaskCard({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: task.id });
+  } = useSortable({ id: task.id, data: { status: task.status } });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.4 : 1,
+  };
+
+  const hasSubtasks = subtasks.length > 0;
+  const completedSubtasks = subtasks.filter((s) => s.status === "completed").length;
+
+  const priorityColors = {
+    low: "bg-slate-400",
+    medium: "bg-orange-400",
+    high: "bg-rose-400",
   };
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <TaskCard
-        task={task}
-        onEdit={onEdit}
-        onDelete={onDelete}
-        onAddSubtask={onAddSubtask}
-        onPromoteSubtask={onPromoteSubtask}
-        subtasks={subtasks}
-        isDragOverlay={isDragOverlay}
-      />
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className={`touch-none ${isDragging ? "opacity-30" : ""}`}
+    >
+      <motion.div
+        layout
+        whileHover={isOverlay ? undefined : { y: -2, transition: { duration: 0.15 } }}
+        className={`group relative bg-card rounded-xl border border-border shadow-sm hover:shadow-md transition-shadow p-3.5 cursor-grab active:cursor-grabbing ${
+          isOverlay ? "shadow-2xl rotate-2 scale-105 ring-2 ring-primary/20" : ""
+        }`}
+      >
+        {/* Priority bar */}
+        <div className={`absolute left-0 top-2 bottom-2 w-1 rounded-full ${priorityColors[task.priority]}`} />
+        
+        <div className="pl-3">
+          {/* Header */}
+          <div className="flex items-start justify-between gap-2 mb-1.5">
+            <h3 className="text-sm font-medium text-foreground leading-snug line-clamp-2 flex-1">
+              {task.title}
+            </h3>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit(task);
+              }}
+              className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground"
+            >
+              <MoreHorizontal className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {/* Description preview */}
+          {task.description && (
+            <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
+              {task.description}
+            </p>
+          )}
+
+          {/* Subtasks indicator */}
+          {hasSubtasks && (
+            <div className="flex items-center gap-1.5 mb-2">
+              <div className="flex-1 h-1.5 bg-secondary rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary rounded-full transition-all"
+                  style={{ width: `${(completedSubtasks / subtasks.length) * 100}%` }}
+                />
+              </div>
+              <span className="text-[10px] text-muted-foreground font-medium">
+                {completedSubtasks}/{subtasks.length}
+              </span>
+            </div>
+          )}
+
+          {/* Footer */}
+          <div className="flex items-center justify-between mt-1">
+            <div className="flex items-center gap-1.5">
+              {task.dueDate && (
+                <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
+                  <Clock className="w-3 h-3" />
+                  {new Date(task.dueDate).toLocaleDateString("es-ES", { day: "numeric", month: "short" })}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddSubtask(task.id);
+                }}
+                className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-secondary text-muted-foreground hover:text-primary"
+                title="Agregar subtarea"
+              >
+                <Plus className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(task);
+                }}
+                className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+                title="Eliminar"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Subtasks list */}
+          {hasSubtasks && (
+            <div className="mt-2 pt-2 border-t border-border space-y-1">
+              {subtasks.map((subtask) => (
+                <div
+                  key={subtask.id}
+                  className="flex items-center gap-2 py-1 px-1.5 rounded-lg hover:bg-secondary/50 group/subtask"
+                >
+                  <button
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      const newStatus = subtask.status === "completed" ? "pending" : "completed";
+                      await updateTaskStatus(subtask.id, newStatus);
+                      toast.success(newStatus === "completed" ? "Subtarea completada" : "Subtarea pendiente");
+                    }}
+                    className="shrink-0"
+                  >
+                    {subtask.status === "completed" ? (
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                    ) : (
+                      <Circle className="w-3.5 h-3.5 text-muted-foreground" />
+                    )}
+                  </button>
+                  <span className={`text-xs flex-1 truncate ${subtask.status === "completed" ? "line-through text-muted-foreground" : "text-foreground"}`}>
+                    {subtask.title}
+                  </span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onPromoteSubtask(subtask.id);
+                    }}
+                    className="opacity-0 group-hover/subtask:opacity-100 transition-opacity p-0.5 rounded hover:bg-secondary text-muted-foreground"
+                    title="Convertir a tarea"
+                  >
+                    <ArrowUpFromLine className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+function KanbanColumn({
+  column,
+  tasks,
+  allTasks,
+  onEdit,
+  onDelete,
+  onAddSubtask,
+  onPromoteSubtask,
+  onAddTask,
+}: {
+  column: typeof COLUMNS[number];
+  tasks: Task[];
+  allTasks: Task[];
+  onEdit: (task: Task) => void;
+  onDelete: (task: Task) => void;
+  onAddSubtask: (parentId: number) => void;
+  onPromoteSubtask: (subtaskId: number) => void;
+  onAddTask: () => void;
+}) {
+  return (
+    <div className="flex flex-col w-full min-w-[300px] max-w-[350px]">
+      {/* Column header */}
+      <div className="flex items-center justify-between px-1 mb-3">
+        <div className="flex items-center gap-2">
+          <div className={`w-2.5 h-2.5 rounded-full ${column.dot}`} />
+          <h2 className="text-sm font-semibold text-foreground">
+            {column.title}
+          </h2>
+          <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
+            {tasks.length}
+          </span>
+        </div>
+        <button
+          onClick={onAddTask}
+          className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Column content */}
+      <SortableContext
+        items={tasks.map((t) => t.id)}
+        strategy={verticalListSortingStrategy}
+      >
+        <div className="flex-1 space-y-2 min-h-[100px]">
+          <AnimatePresence mode="popLayout">
+            {tasks.map((task) => (
+              <motion.div
+                key={task.id}
+                layout
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.15 } }}
+                transition={{ type: "spring", stiffness: 500, damping: 30 }}
+              >
+                <KanbanCard
+                  task={task}
+                  subtasks={allTasks.filter((t) => t.parentId === task.id)}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                  onAddSubtask={onAddSubtask}
+                  onPromoteSubtask={onPromoteSubtask}
+                />
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+      </SortableContext>
+
+      {/* Add card button */}
+      <button
+        onClick={onAddTask}
+        className="mt-2 flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-all w-full"
+      >
+        <Plus className="w-4 h-4" />
+        <span>Añade una tarjeta</span>
+      </button>
     </div>
   );
 }
@@ -133,22 +350,19 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
   const { theme, toggleTheme } = useTheme();
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingTask, setEditingTask] = useState<Task | null>(null);
-
-  const [isSubtaskFormOpen, setIsSubtaskFormOpen] = useState(false);
-  const [parentTaskId, setParentTaskId] = useState<number | null>(null);
-
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  const [deletingTask, setDeletingTask] = useState<Task | null>(null);
-
   const [commandOpen, setCommandOpen] = useState(false);
   const [activeDragId, setActiveDragId] = useState<number | null>(null);
 
-  // Keyboard shortcut for Command Palette
+  // Modals
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [defaultStatus, setDefaultStatus] = useState<string>("pending");
+  const [isSubtaskFormOpen, setIsSubtaskFormOpen] = useState(false);
+  const [parentTaskId, setParentTaskId] = useState<number | null>(null);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [deletingTask, setDeletingTask] = useState<Task | null>(null);
+
+  // Keyboard shortcut
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
@@ -160,36 +374,27 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
     return () => document.removeEventListener("keydown", down);
   }, []);
 
-  // Filter top-level tasks only
-  const topLevelTasks = tasks.filter((t) => t.parentId === null);
-
-  const filteredTasks = topLevelTasks.filter((task) => {
-    const matchesSearch =
+  // Filter tasks
+  const filteredTasks = tasks.filter((task) => {
+    if (task.parentId !== null) return false;
+    if (!searchQuery) return true;
+    return (
       task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (task.description?.toLowerCase() || "").includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === "all" || task.status === statusFilter;
-    return matchesSearch && matchesStatus;
+      (task.description?.toLowerCase() || "").includes(searchQuery.toLowerCase())
+    );
   });
 
-  // Drag and drop sensors
+  const getColumnTasks = (status: string) =>
+    filteredTasks.filter((t) => t.status === status);
+
+  // DnD sensors
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 8 },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveDragId(event.active.id as number);
-  };
-
-  const handleDragOver = (event: DragOverEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-
-    // Visual feedback could be added here
   };
 
   const handleDragEnd = async (event: DragEndEvent) => {
@@ -200,56 +405,72 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
 
     const draggedId = active.id as number;
     const overId = over.id as number;
+    const draggedTask = tasks.find((t) => t.id === draggedId);
 
-    // If dropped over another task -> convert to subtask
+    if (!draggedTask) return;
+
+    // If dropped over another card
     if (draggedId !== overId) {
-      const draggedTask = tasks.find((t) => t.id === draggedId);
       const overTask = tasks.find((t) => t.id === overId);
 
-      if (draggedTask && overTask && draggedTask.parentId === null) {
-        // Check if we're dropping in the same sortable context (reorder)
-        // or on top of another task (make subtask)
-        // If the pointer is directly over another card, convert to subtask
-        try {
-          await moveTask(draggedId, overId);
-          toast.success(`"${draggedTask.title}" ahora es subtarea de "${overTask.title}"`);
-          window.location.reload();
+      if (overTask) {
+        // Same column -> reorder
+        if (draggedTask.status === overTask.status && draggedTask.parentId === overTask.parentId) {
+          const columnTasks = getColumnTasks(draggedTask.status);
+          const oldIndex = columnTasks.findIndex((t) => t.id === draggedId);
+          const newIndex = columnTasks.findIndex((t) => t.id === overId);
+
+          if (oldIndex !== -1 && newIndex !== -1) {
+            const newColumnTasks = arrayMove(columnTasks, oldIndex, newIndex);
+            const otherTasks = tasks.filter((t) => t.status !== draggedTask.status || t.parentId !== null);
+            setTasks([...otherTasks, ...newColumnTasks]);
+
+            try {
+              await Promise.all(
+                newColumnTasks.map((task, index) => reorderTask(task.id, index))
+              );
+            } catch (error) {
+              toast.error("Error al reordenar");
+            }
+          }
           return;
-        } catch (error) {
-          toast.error("Error al mover la tarea");
         }
-      }
-    }
 
-    // Reorder within same level
-    if (over && draggedId !== overId) {
-      const oldIndex = filteredTasks.findIndex((t) => t.id === draggedId);
-      const newIndex = filteredTasks.findIndex((t) => t.id === overId);
+        // Different column -> move status
+        if (draggedTask.status !== overTask.status) {
+          try {
+            await updateTaskStatus(draggedId, overTask.status);
+            setTasks((prev) =>
+              prev.map((t) =>
+                t.id === draggedId ? { ...t, status: overTask.status } : t
+              )
+            );
+            toast.success(`Movido a ${COLUMNS.find((c) => c.id === overTask.status)?.title}`);
+          } catch (error) {
+            toast.error("Error al mover");
+          }
+          return;
+        }
 
-      if (oldIndex !== -1 && newIndex !== -1) {
-        const newTasks = arrayMove(filteredTasks, oldIndex, newIndex);
-        setTasks((prev) => {
-          const others = prev.filter((t) => t.parentId !== null || !filteredTasks.find((ft) => ft.id === t.id));
-          return [...newTasks, ...others];
-        });
-
-        try {
-          await Promise.all(
-            newTasks.map((task, index) => reorderTask(task.id, index))
-          );
-          toast.success("Orden actualizado");
-        } catch (error) {
-          toast.error("Error al reordenar");
+        // Make subtask
+        if (draggedTask.parentId === null && overTask.parentId === null) {
+          try {
+            await moveTask(draggedId, overId);
+            setTasks((prev) =>
+              prev.map((t) =>
+                t.id === draggedId ? { ...t, parentId: overId } : t
+              )
+            );
+            toast.success(`Convertido a subtarea`);
+          } catch (error) {
+            toast.error("Error al convertir");
+          }
+          return;
         }
       }
     }
   };
 
-  // Subtasks helper
-  const getSubtasks = (parentId: number) =>
-    tasks.filter((t) => t.parentId === parentId);
-
-  // Helper to serialize dates from server
   const serializeTask = (task: any): Task => ({
     ...task,
     dueDate: task.dueDate ? task.dueDate.toISOString() : null,
@@ -260,9 +481,9 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
     try {
       const newTask = await createTask(formData);
       setTasks((prev) => [...prev, serializeTask(newTask)]);
-      toast.success("Tarea creada exitosamente");
+      toast.success("Tarea creada");
     } catch (error) {
-      toast.error("Error al crear la tarea");
+      toast.error("Error al crear");
     }
   };
 
@@ -311,14 +532,15 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
       setTasks((prev) =>
         prev.map((t) => (t.id === updated.id ? serializeTask(updated) : t))
       );
-      toast.success("Subtarea convertida a tarea");
+      toast.success("Subtarea promovida");
     } catch (error) {
-      toast.error("Error al promover subtarea");
+      toast.error("Error al promover");
     }
   };
 
-  const openCreateForm = useCallback(() => {
+  const openCreateForm = useCallback((status?: string) => {
     setEditingTask(null);
+    setDefaultStatus(status || "pending");
     setIsFormOpen(true);
   }, []);
 
@@ -337,263 +559,118 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
     setIsDeleteOpen(true);
   }, []);
 
-  const taskCounts = {
-    all: topLevelTasks.length,
-    pending: topLevelTasks.filter((t) => t.status === "pending").length,
-    in_progress: topLevelTasks.filter((t) => t.status === "in_progress").length,
-    completed: topLevelTasks.filter((t) => t.status === "completed").length,
-  };
+  const activeDragTask = activeDragId ? tasks.find((t) => t.id === activeDragId) : null;
 
   const commandActions = [
     {
       label: "Crear nueva tarea",
       icon: Plus,
-      action: () => {
-        setCommandOpen(false);
-        openCreateForm();
-      },
-    },
-    {
-      label: "Ver todas las tareas",
-      icon: LayoutGrid,
-      action: () => {
-        setCommandOpen(false);
-        setStatusFilter("all");
-      },
+      action: () => { setCommandOpen(false); openCreateForm(); },
     },
     {
       label: "Ver pendientes",
       icon: Circle,
-      action: () => {
-        setCommandOpen(false);
-        setStatusFilter("pending");
-      },
-    },
-    {
-      label: "Ver en progreso",
-      icon: Clock,
-      action: () => {
-        setCommandOpen(false);
-        setStatusFilter("in_progress");
-      },
-    },
-    {
-      label: "Ver completadas",
-      icon: CheckCircle2,
-      action: () => {
-        setCommandOpen(false);
-        setStatusFilter("completed");
-      },
+      action: () => { setCommandOpen(false); setSearchQuery(""); },
     },
     {
       label: "Limpiar búsqueda",
       icon: Trash2,
-      action: () => {
-        setCommandOpen(false);
-        setSearchQuery("");
-        setStatusFilter("all");
-      },
+      action: () => { setCommandOpen(false); setSearchQuery(""); },
     },
   ];
 
-  const activeDragTask = activeDragId ? tasks.find((t) => t.id === activeDragId) : null;
-
   return (
-    <div className="min-h-full">
+    <div className="h-screen flex flex-col bg-background overflow-hidden">
       {/* Header */}
-      <header className="sticky top-0 z-30 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-b border-slate-200/60 dark:border-slate-800/60">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-md shadow-violet-500/20">
-                <span className="text-white font-bold text-sm">TF</span>
-              </div>
-              <h1 className="text-lg font-bold bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent dark:from-violet-400 dark:to-indigo-400">TaskFlow</h1>
+      <header className="shrink-0 bg-card/80 backdrop-blur-xl border-b border-border z-30">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-md shadow-violet-500/20">
+              <span className="text-white font-bold text-sm">TF</span>
             </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="rounded-lg h-9 w-9 text-slate-500 dark:text-slate-400"
-                onClick={toggleTheme}
-                title={theme === "light" ? "Modo oscuro" : "Modo claro"}
-              >
-                {theme === "light" ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="hidden sm:flex items-center gap-2 text-slate-500 dark:text-slate-400 rounded-lg"
-                onClick={() => setCommandOpen(true)}
-              >
-                <CommandIcon className="w-3.5 h-3.5" />
-                <span className="text-xs">Ctrl K</span>
-              </Button>
-              <Button
-                onClick={openCreateForm}
-                className="rounded-xl px-4 py-2 text-sm font-semibold shadow-md shadow-violet-500/20 hover:shadow-lg hover:shadow-violet-500/30 transition-all bg-gradient-to-r from-violet-500 to-indigo-600 hover:from-violet-600 hover:to-indigo-700 border-0 text-white"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Nueva tarea
-              </Button>
-            </div>
+            <h1 className="text-base font-bold bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">
+              TaskFlow
+            </h1>
           </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Filters Bar */}
-        <div className="mb-8 space-y-4">
-          <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-            <div className="relative w-full sm:w-80">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <div className="flex items-center gap-2">
+            <div className="relative hidden sm:block">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
               <Input
-                placeholder="Buscar tareas..."
-                className="pl-10 rounded-xl w-full"
+                placeholder="Buscar..."
+                className="pl-8 h-8 w-56 rounded-lg bg-secondary/80 border-0 text-sm"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant={viewMode === "grid" ? "secondary" : "ghost"}
-                size="icon"
-                className="rounded-lg h-9 w-9"
-                onClick={() => setViewMode("grid")}
-              >
-                <LayoutGrid className="w-4 h-4" />
-              </Button>
-              <Button
-                variant={viewMode === "list" ? "secondary" : "ghost"}
-                size="icon"
-                className="rounded-lg h-9 w-9"
-                onClick={() => setViewMode("list")}
-              >
-                <List className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-
-          {/* Status Filters */}
-          <div className="flex flex-wrap gap-2">
-            {[
-              { key: "all", label: `Todas (${taskCounts.all})`, activeColor: "bg-slate-900 text-white shadow-sm dark:bg-white dark:text-slate-900", inactiveColor: "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-800 dark:hover:bg-slate-800" },
-              { key: "pending", label: `Pendientes (${taskCounts.pending})`, activeColor: "bg-amber-500 text-white shadow-sm shadow-amber-500/25", inactiveColor: "bg-white text-amber-700 border-amber-200 hover:bg-amber-50 dark:bg-slate-900 dark:text-amber-400 dark:border-amber-900/50 dark:hover:bg-amber-950/30" },
-              { key: "in_progress", label: `En progreso (${taskCounts.in_progress})`, activeColor: "bg-indigo-500 text-white shadow-sm shadow-indigo-500/25", inactiveColor: "bg-white text-indigo-700 border-indigo-200 hover:bg-indigo-50 dark:bg-slate-900 dark:text-indigo-400 dark:border-indigo-900/50 dark:hover:bg-indigo-950/30" },
-              { key: "completed", label: `Completadas (${taskCounts.completed})`, activeColor: "bg-emerald-500 text-white shadow-sm shadow-emerald-500/25", inactiveColor: "bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-50 dark:bg-slate-900 dark:text-emerald-400 dark:border-emerald-900/50 dark:hover:bg-emerald-950/30" },
-            ].map((filter) => (
-              <button
-                key={filter.key}
-                onClick={() => setStatusFilter(filter.key)}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all border ${
-                  statusFilter === filter.key
-                    ? filter.activeColor
-                    : filter.inactiveColor
-                }`}
-              >
-                {filter.label}
-              </button>
-            ))}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-lg text-muted-foreground"
+              onClick={toggleTheme}
+            >
+              {theme === "light" ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="hidden sm:flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-muted-foreground text-xs"
+              onClick={() => setCommandOpen(true)}
+            >
+              <CommandIcon className="w-3 h-3" />
+              <kbd className="hidden lg:inline bg-secondary px-1 rounded text-[10px]">Ctrl K</kbd>
+            </Button>
+            <Button
+              onClick={() => openCreateForm()}
+              size="sm"
+              className="h-8 rounded-lg text-xs font-semibold bg-gradient-to-r from-violet-500 to-indigo-600 hover:from-violet-600 hover:to-indigo-700 border-0 text-white shadow-md shadow-violet-500/20"
+            >
+              <Plus className="w-3.5 h-3.5 mr-1.5" />
+              <span className="hidden sm:inline">Nueva</span>
+            </Button>
           </div>
         </div>
+      </header>
 
-        {/* Task Grid with Drag & Drop */}
-        <AnimatePresence mode="wait">
-          {filteredTasks.length === 0 ? (
-            <motion.div
-              key="empty"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
-            >
-              <EmptyState onCreateClick={openCreateForm} />
-            </motion.div>
-          ) : (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragStart={handleDragStart}
-              onDragOver={handleDragOver}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={filteredTasks.map((t) => t.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                <motion.div
-                  key="grid"
-                  initial="hidden"
-                  animate="visible"
-                  exit="hidden"
-                  variants={{
-                    hidden: { opacity: 0 },
-                    visible: {
-                      opacity: 1,
-                      transition: { staggerChildren: 0.06 },
-                    },
-                  }}
-                  className={
-                    viewMode === "grid"
-                      ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
-                      : "flex flex-col gap-3"
-                  }
-                >
-                  <AnimatePresence>
-                    {filteredTasks.map((task) => (
-                      <motion.div
-                        key={task.id}
-                        layout
-                        variants={{
-                          hidden: { opacity: 0, y: 20, scale: 0.95 },
-                          visible: {
-                            opacity: 1,
-                            y: 0,
-                            scale: 1,
-                            transition: {
-                              type: "spring",
-                              stiffness: 350,
-                              damping: 25,
-                            },
-                          },
-                        }}
-                        exit={{
-                          opacity: 0,
-                          scale: 0.9,
-                          transition: { duration: 0.2 },
-                        }}
-                      >
-                        <SortableTaskCard
-                          task={task}
-                          onEdit={openEditForm}
-                          onDelete={openDeleteDialog}
-                          onAddSubtask={openSubtaskForm}
-                          onPromoteSubtask={handlePromoteSubtask}
-                          subtasks={getSubtasks(task.id)}
-                        />
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
-                </motion.div>
-              </SortableContext>
+      {/* Kanban Board */}
+      <main className="flex-1 overflow-x-auto overflow-y-hidden">
+        <div className="h-full min-w-fit px-4 sm:px-6 py-4">
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCorners}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+          >
+            <div className="flex gap-4 h-full">
+              {COLUMNS.map((column) => (
+                <KanbanColumn
+                  key={column.id}
+                  column={column}
+                  tasks={getColumnTasks(column.id)}
+                  allTasks={tasks}
+                  onEdit={openEditForm}
+                  onDelete={openDeleteDialog}
+                  onAddSubtask={openSubtaskForm}
+                  onPromoteSubtask={handlePromoteSubtask}
+                  onAddTask={() => openCreateForm(column.id)}
+                />
+              ))}
+            </div>
 
-              <DragOverlay>
-                {activeDragTask ? (
-                  <SortableTaskCard
-                    task={activeDragTask}
-                    onEdit={() => {}}
-                    onDelete={() => {}}
-                    onAddSubtask={() => {}}
-                    onPromoteSubtask={() => {}}
-                    subtasks={getSubtasks(activeDragTask.id)}
-                    isDragOverlay
-                  />
-                ) : null}
-              </DragOverlay>
-            </DndContext>
-          )}
-        </AnimatePresence>
+            <DragOverlay>
+              {activeDragTask ? (
+                <KanbanCard
+                  task={activeDragTask}
+                  subtasks={tasks.filter((t) => t.parentId === activeDragTask.id)}
+                  onEdit={() => {}}
+                  onDelete={() => {}}
+                  onAddSubtask={() => {}}
+                  onPromoteSubtask={() => {}}
+                  isOverlay
+                />
+              ) : null}
+            </DragOverlay>
+          </DndContext>
+        </div>
       </main>
 
       {/* Command Palette */}
@@ -618,7 +695,7 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
               </CommandGroup>
               <CommandSeparator />
               <CommandGroup heading="Tareas">
-                {topLevelTasks.map((task) => (
+                {filteredTasks.map((task) => (
                   <CommandItem
                     key={task.id}
                     onSelect={() => {
@@ -641,6 +718,7 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
         open={isFormOpen}
         onOpenChange={setIsFormOpen}
         task={editingTask}
+        defaultStatus={defaultStatus}
         onSubmit={editingTask ? handleUpdateTask : handleCreateTask}
       />
 
