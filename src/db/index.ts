@@ -1,7 +1,10 @@
-export const items = sqliteTable("items", {
-  id: integer("id", { mode: "number" }).primaryKey({ autoIncrement: true }),
-  title: text("title").notNull(),
-  description: text("description"),
-  status: text("status", { enum: ["active", "completed", "archived"] }).default("active"),
-  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+import { createClient } from "@libsql/client";
+import { drizzle } from "drizzle-orm/libsql";
+import * as schema from "./schema";
+
+const client = createClient({
+  url: process.env.TURSO_DATABASE_URL!,
+  authToken: process.env.TURSO_AUTH_TOKEN!,
 });
+
+export const db = drizzle(client, { schema });

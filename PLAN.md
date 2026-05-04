@@ -1,7 +1,8 @@
-# Plan de Desarrollo - CRUD Moderno
+# Plan de Desarrollo - TaskFlow (Gestor de Tareas)
 
 > **Última actualización:** Mayo 2026
 > **Stack:** Next.js 16 + TypeScript + Tailwind CSS v4 + Turso + Drizzle ORM
+> **Entidad:** `tasks` (Gestor de Tareas)
 
 ---
 
@@ -58,23 +59,29 @@ git commit -m "feat: initial next.js setup with typescript and tailwind"
 
 ## 📌 Fase 2: Configuración de Base de Datos (Turso)
 
-**Estado:** 🔄 EN PROGRESO (2.7 pendiente)
+**Estado:** ✅ COMPLETADA
 
 ### Acciones realizadas:
 - ✅ 2.1: Creada base de datos en Turso
 - ✅ 2.2: Creado `.env.local` con credenciales
 - ✅ 2.3: Creado `drizzle.config.ts`
-- ✅ 2.4: Creado `src/db/schema.ts`
+- ✅ 2.4: Creado `src/db/schema.ts` (Entidad: `tasks`)
 - ✅ 2.5: Creado `src/db/index.ts`
 - ✅ 2.6: Generadas migraciones (`npx drizzle-kit generate`)
-- ⬜ 2.7: Aplicar migraciones a la base de datos
+- ✅ 2.7: Aplicadas migraciones a Turso (`npx drizzle-kit migrate`)
 
-### Comando pendiente:
-```bash
-npx drizzle-kit migrate
-```
+### Esquema de la tabla `tasks`:
+| Columna | Tipo | Descripción |
+|---------|------|-------------|
+| `id` | integer (PK, auto-increment) | Identificador único |
+| `title` | text (not null) | Título de la tarea |
+| `description` | text | Descripción opcional |
+| `status` | text (enum) | `pending` / `in_progress` / `completed` |
+| `priority` | text (enum) | `low` / `medium` / `high` |
+| `dueDate` | integer (timestamp) | Fecha límite |
+| `createdAt` | integer (timestamp) | Fecha de creación |
 
-### Commit pendiente:
+### Commit:
 ```bash
 git add .
 git commit -m "feat: configure turso database with drizzle orm and initial schema"
@@ -84,10 +91,10 @@ git commit -m "feat: configure turso database with drizzle orm and initial schem
 
 ## 📌 Fase 3: API / Server Actions
 
-**Estado:** ⬜ PENDIENTE
+**Estado:** 🔄 EN PROGRESO (Próximo paso)
 
 ### 3.1: Activar Server Actions
-En `next.config.ts` (o `next.config.mjs`):
+En `next.config.ts`:
 ```typescript
 const nextConfig = {
   experimental: {
@@ -105,30 +112,45 @@ Crear archivo `src/app/actions.ts`:
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
-import { items } from "@/db/schema";
+import { tasks } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
-export async function getItems() {
-  return db.select().from(items).all();
+export async function getTasks() {
+  return db.select().from(tasks).all();
 }
 
-export async function createItem(formData: FormData) {
+export async function createTask(formData: FormData) {
   const title = formData.get("title") as string;
   const description = formData.get("description") as string;
-  await db.insert(items).values({ title, description });
+  const priority = formData.get("priority") as string;
+  const dueDate = formData.get("dueDate") as string;
+  await db.insert(tasks).values({
+    title,
+    description,
+    priority,
+    dueDate: dueDate ? new Date(dueDate) : null,
+  });
   revalidatePath("/");
 }
 
-export async function updateItem(id: number, formData: FormData) {
+export async function updateTask(id: number, formData: FormData) {
   const title = formData.get("title") as string;
   const description = formData.get("description") as string;
   const status = formData.get("status") as string;
-  await db.update(items).set({ title, description, status }).where(eq(items.id, id));
+  const priority = formData.get("priority") as string;
+  const dueDate = formData.get("dueDate") as string;
+  await db.update(tasks).set({
+    title,
+    description,
+    status,
+    priority,
+    dueDate: dueDate ? new Date(dueDate) : null,
+  }).where(eq(tasks.id, id));
   revalidatePath("/");
 }
 
-export async function deleteItem(id: number) {
-  await db.delete(items).where(eq(items.id, id));
+export async function deleteTask(id: number) {
+  await db.delete(tasks).where(eq(tasks.id, id));
   revalidatePath("/");
 }
 ```
@@ -136,7 +158,7 @@ export async function deleteItem(id: number) {
 ### Commit:
 ```bash
 git add .
-git commit -m "feat: add server actions for crud operations"
+git commit -m "feat: add server actions for task crud operations"
 ```
 
 ---
@@ -179,9 +201,9 @@ git commit -m "feat: add shadcn ui components and theme configuration"
 - Navegación limpia
 
 ### 5.2: Página principal (`src/app/page.tsx`)
-- Fetch inicial de items con Server Action
+- Fetch inicial de tasks con Server Action
 - Grid de Cards (`rounded-2xl`, `shadow-sm`)
-- Campos: Título, descripción truncada, status con Badge, fecha
+- Campos: Título, descripción truncada, status con Badge, prioridad, fecha límite
 - Botones: Editar (Dialog), Eliminar (confirmación)
 
 ### 5.3: Formularios
@@ -193,13 +215,13 @@ git commit -m "feat: add shadcn ui components and theme configuration"
 - Feedback visual en errores
 
 ### 5.4: Estados vacíos
-- Mensaje/ilustración cuando no hay items
+- Mensaje/ilustración cuando no hay tareas
 - Botón CTA prominente
 
 ### Commit:
 ```bash
 git add .
-git commit -m "feat: implement main dashboard with crud cards and forms"
+git commit -m "feat: implement main dashboard with task cards and forms"
 ```
 
 ---
@@ -264,8 +286,8 @@ git commit -m "feat: add command palette with keyboard navigation"
 ### 8.2: Toasts de confirmación
 Ya instalado con `sonner` en Fase 4.
 Implementar notificaciones para:
-- "Item creado exitosamente"
-- "Item eliminado"
+- "Tarea creada exitosamente"
+- "Tarea eliminada"
 - "Error al guardar"
 
 ### 8.3: Loading states
@@ -363,19 +385,17 @@ Decidí que para tu demo de LinkedIn vamos a usar **Opción B: PIN de Admin**.
 
 ---
 
-## 📝 Pendientes de Definición
+## 📝 Decisiones Confirmadas
 
-Antes de continuar con la Fase 3, confirmar:
+1. **Entidad:** `tasks` (Gestor de Tareas)
+   - Campos: title, description, status, priority, dueDate, createdAt
 
-1. **¿Qué entidad vas a gestionar?** (Actualmente es `items` genérico)
-   - Opciones: Tareas, Notas, Contactos, Links, Productos, Gastos...
+2. **Nombre del proyecto:** `TaskFlow` (propuesto)
+   - Actual repo: `crud-moderno-js`
 
-2. **¿Nombre definitivo del proyecto?**
-   - Actual: `crud-moderno-js`
-   - Ejemplos: TaskFlow, Nexus, Velvet, CleverList...
-
-3. **¿Estilo visual confirmado?**
+3. **Estilo visual:**
    - Estilo Linear/Notion limpio + Command Palette (Ctrl+K) ✅
+   - Tailwind CSS v4 + shadcn/ui
 
 ---
 
