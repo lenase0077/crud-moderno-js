@@ -91,69 +91,21 @@ git commit -m "feat: configure turso database with drizzle orm and initial schem
 
 ## 📌 Fase 3: API / Server Actions
 
-**Estado:** 🔄 EN PROGRESO (Próximo paso)
+**Estado:** ✅ COMPLETADA
 
-### 3.1: Activar Server Actions
-En `next.config.ts`:
-```typescript
-const nextConfig = {
-  experimental: {
-    serverActions: true,
-  },
-};
-export default nextConfig;
-```
+### Acciones realizadas:
+- ✅ 3.1: Activadas Server Actions en `next.config.ts`
+- ✅ 3.2: Creado `src/app/actions.ts` con las siguientes funciones:
+  - `getTasks()` - Obtener todas las tareas
+  - `getTaskById(id)` - Obtener una tarea por ID
+  - `createTask(formData)` - Crear nueva tarea (valida título obligatorio)
+  - `updateTask(id, formData)` - Actualizar tarea existente
+  - `updateTaskStatus(id, status)` - Actualizar solo el estado (para drag & drop)
+  - `deleteTask(id)` - Eliminar tarea
 
-### 3.2: Crear Server Actions
-Crear archivo `src/app/actions.ts`:
-
-```typescript
-"use server";
-
-import { revalidatePath } from "next/cache";
-import { db } from "@/db";
-import { tasks } from "@/db/schema";
-import { eq } from "drizzle-orm";
-
-export async function getTasks() {
-  return db.select().from(tasks).all();
-}
-
-export async function createTask(formData: FormData) {
-  const title = formData.get("title") as string;
-  const description = formData.get("description") as string;
-  const priority = formData.get("priority") as string;
-  const dueDate = formData.get("dueDate") as string;
-  await db.insert(tasks).values({
-    title,
-    description,
-    priority,
-    dueDate: dueDate ? new Date(dueDate) : null,
-  });
-  revalidatePath("/");
-}
-
-export async function updateTask(id: number, formData: FormData) {
-  const title = formData.get("title") as string;
-  const description = formData.get("description") as string;
-  const status = formData.get("status") as string;
-  const priority = formData.get("priority") as string;
-  const dueDate = formData.get("dueDate") as string;
-  await db.update(tasks).set({
-    title,
-    description,
-    status,
-    priority,
-    dueDate: dueDate ? new Date(dueDate) : null,
-  }).where(eq(tasks.id, id));
-  revalidatePath("/");
-}
-
-export async function deleteTask(id: number) {
-  await db.delete(tasks).where(eq(tasks.id, id));
-  revalidatePath("/");
-}
-```
+### Archivos creados/modificados:
+- `src/app/actions.ts` (nuevo)
+- `next.config.ts` (modificado - activa server actions)
 
 ### Commit:
 ```bash
