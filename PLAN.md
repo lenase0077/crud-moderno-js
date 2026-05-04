@@ -199,19 +199,30 @@ git commit -m "feat: implement main dashboard with task cards and forms"
 
 ## 📌 Fase 6: Animaciones y Micro-interacciones
 
-**Estado:** ⬜ PENDIENTE
+**Estado:** ✅ COMPLETADA
 
-### 6.1: Instalar Framer Motion
+### Dependencias instaladas:
 ```bash
 npm install framer-motion
 ```
 
-### 6.2: Animaciones a implementar
-1. **Entrada de lista:** `staggerChildren` en el grid
-2. **Hover en cards:** `whileHover={{ y: -4 }}` con spring
-3. **Dialog:** `AnimatePresence` + fade/scale
-4. **Botones:** `whileTap={{ scale: 0.97 }}`
-5. **Eliminar:** Encogimiento y desvanecimiento de la card
+### Animaciones implementadas:
+
+| Ubicación | Animación | Detalle |
+|---|---|---|
+| `task-dashboard.tsx` | **Stagger Children** | Las cards aparecen secuencialmente con delay de 60ms cada una |
+| `task-dashboard.tsx` | **Layout Animation** | Las cards se reordenan suavemente al filtrar |
+| `task-dashboard.tsx` | **AnimatePresence** | Transiciones suaves entre estado vacío y lista de tareas |
+| `task-card.tsx` | **Hover Spring** | `y: -4` con `stiffness: 400, damping: 20` al pasar el mouse |
+| `task-card.tsx` | **Tap Scale** | `scale: 0.98` al hacer click |
+| `task-card.tsx` | **Entry Animation** | `opacity: 0 → 1`, `y: 20 → 0`, `scale: 0.95 → 1` |
+| `task-card.tsx` | **Exit Animation** | `opacity: 0`, `scale: 0.9` al eliminar |
+| `empty-state.tsx` | **Spring Entry** | Entrada suave con spring al aparecer |
+
+### Componentes modificados:
+- `src/components/task-dashboard.tsx`
+- `src/components/task-card.tsx`
+- `src/components/empty-state.tsx`
 
 ### Commit:
 ```bash

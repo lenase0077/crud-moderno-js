@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Search, LayoutGrid, List, Command } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -195,26 +196,71 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
         </div>
 
         {/* Task Grid */}
-        {filteredTasks.length === 0 ? (
-          <EmptyState onCreateClick={openCreateForm} />
-        ) : (
-          <div
-            className={
-              viewMode === "grid"
-                ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
-                : "flex flex-col gap-3"
-            }
-          >
-            {filteredTasks.map((task) => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                onEdit={openEditForm}
-                onDelete={openDeleteDialog}
-              />
-            ))}
-          </div>
-        )}
+        <AnimatePresence mode="wait">
+          {filteredTasks.length === 0 ? (
+            <motion.div
+              key="empty"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+            >
+              <EmptyState onCreateClick={openCreateForm} />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="grid"
+              initial="hidden"
+              animate="visible"
+              exit="hidden"
+              variants={{
+                hidden: { opacity: 0 },
+                visible: {
+                  opacity: 1,
+                  transition: { staggerChildren: 0.06 },
+                },
+              }}
+              className={
+                viewMode === "grid"
+                  ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+                  : "flex flex-col gap-3"
+              }
+            >
+              <AnimatePresence>
+                {filteredTasks.map((task) => (
+                  <motion.div
+                    key={task.id}
+                    layout
+                    variants={{
+                      hidden: { opacity: 0, y: 20, scale: 0.95 },
+                      visible: {
+                        opacity: 1,
+                        y: 0,
+                        scale: 1,
+                        transition: {
+                          type: "spring",
+                          stiffness: 350,
+                          damping: 25,
+                        },
+                      },
+                    }}
+                    exit={{
+                      opacity: 0,
+                      scale: 0.9,
+                      transition: { duration: 0.2 },
+                    }}
+                  >
+                    <TaskCard
+                      task={task}
+                      onEdit={openEditForm}
+                      onDelete={openDeleteDialog}
+                    />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
 
       {/* Modals */}

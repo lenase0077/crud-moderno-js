@@ -1,5 +1,6 @@
 "use client";
 
+import { motion } from "framer-motion";
 import { ClipboardList, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -9,7 +10,12 @@ interface EmptyStateProps {
 
 export function EmptyState({ onCreateClick }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ type: "spring", stiffness: 300, damping: 25 }}
+      className="flex flex-col items-center justify-center py-20 px-4 text-center"
+    >
       <div className="w-20 h-20 rounded-2xl bg-slate-100 flex items-center justify-center mb-6">
         <ClipboardList className="w-10 h-10 text-slate-400" />
       </div>
@@ -26,6 +32,6 @@ export function EmptyState({ onCreateClick }: EmptyStateProps) {
         <Plus className="w-4 h-4 mr-2" />
         Crear primera tarea
       </Button>
-    </div>
+    </motion.div>
   );
 }

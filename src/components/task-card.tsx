@@ -1,5 +1,6 @@
 "use client";
 
+import { motion } from "framer-motion";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Calendar, Clock, Pencil, Trash2, GripVertical } from "lucide-react";
@@ -47,7 +48,11 @@ export function TaskCard({ task, onEdit, onDelete }: TaskCardProps) {
   const priority = priorityConfig[task.priority];
 
   return (
-    <Card className="group relative rounded-2xl border border-slate-200/60 bg-white shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300">
+    <motion.div
+      whileHover={{ y: -4, transition: { type: "spring", stiffness: 400, damping: 20 } }}
+      whileTap={{ scale: 0.98 }}
+    >
+      <Card className="group relative rounded-2xl border border-slate-200/60 bg-white shadow-sm hover:shadow-md transition-shadow duration-300">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-2 flex-1 min-w-0">
@@ -113,6 +118,7 @@ export function TaskCard({ task, onEdit, onDelete }: TaskCardProps) {
           {format(new Date(task.createdAt), "dd MMM", { locale: es })}
         </span>
       </CardFooter>
-    </Card>
+      </Card>
+    </motion.div>
   );
 }
