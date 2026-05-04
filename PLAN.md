@@ -282,7 +282,7 @@ git commit -m "feat: add subtasks, drag-and-drop and command palette"
 ### Features implementadas:
 
 | Feature | Detalle |
-|---|---|
+|---|---|---|
 | **Dark Mode** | Toggle en el header. Persiste en localStorage. Variables CSS cambian automáticamente. |
 | **Protección PIN** | Pantalla de bloqueo al entrar. PIN se guarda en localStorage. Persiste la sesión con `taskflow-pin-verified`. Botón de bloqueo en esquina inferior izquierda. |
 | **Drag-to-Subtask** | Arrastrar una tarea sobre otra la convierte en subtarea. Visual feedback con DragOverlay. |
@@ -304,6 +304,35 @@ git commit -m "feat: add subtasks, drag-and-drop and command palette"
 ```bash
 git add .
 git commit -m "feat: add dark mode, pin protection and drag-to-subtask"
+```
+
+---
+
+## 📌 Fase 8b: Rediseño Kanban (Estilo Trello)
+
+**Estado:** ✅ COMPLETADA
+
+### Features implementadas:
+
+| Feature | Detalle |
+|---|---|---|
+| **Tablero Kanban** | Tres columnas verticales: Pendientes, En progreso, Completadas. Scroll horizontal infinito. |
+| **Cards tipo Trello** | Diseño compacto con barra lateral de color por prioridad, checklist de subtareas con progreso, fecha límite, y acciones en hover. |
+| **Checklist de subtareas** | Las subtareas se muestran como items checkeables dentro de cada card, con barra de progreso visual. Se puede marcar como completada con un click. |
+| **Drag & Drop entre columnas** | Arrastrar una card de una columna a otra cambia su estado automáticamente. |
+| **Reordenar dentro de columna** | Las cards se pueden reordenar arrastrando dentro de la misma columna. |
+| **Crear desde columna** | Botón "Añade una tarjeta" al final de cada columna, crea con el estado correcto por defecto. |
+| **Header compacto** | Barra superior minimalista con búsqueda, tema, atajos y botón de crear. |
+| **Drag Overlay** | La card flotante al arrastrar tiene sombra, rotación y escala para efecto premium. |
+
+### Componentes modificados:
+- `src/components/task-dashboard.tsx` - Rediseño completo como Kanban board
+- `src/components/task-form.tsx` - Acepta `defaultStatus` prop para crear en la columna correcta
+
+### Commit:
+```bash
+git add .
+git commit -m "feat: redesign as Kanban board with Trello-style columns and cards"
 ```
 
 ---
