@@ -87,6 +87,7 @@ function SortableTaskCard({
   onEdit,
   onDelete,
   onAddSubtask,
+  onPromoteSubtask,
   subtasks,
   isDragOverlay,
 }: {
@@ -94,6 +95,7 @@ function SortableTaskCard({
   onEdit: (task: Task) => void;
   onDelete: (task: Task) => void;
   onAddSubtask: (parentId: number) => void;
+  onPromoteSubtask: (subtaskId: number) => void;
   subtasks: Task[];
   isDragOverlay?: boolean;
 }) {
@@ -119,6 +121,7 @@ function SortableTaskCard({
         onEdit={onEdit}
         onDelete={onDelete}
         onAddSubtask={onAddSubtask}
+        onPromoteSubtask={onPromoteSubtask}
         subtasks={subtasks}
         isDragOverlay={isDragOverlay}
       />
@@ -291,6 +294,16 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
     }
   };
 
+  const handlePromoteSubtask = async (subtaskId: number) => {
+    try {
+      await moveTask(subtaskId, null);
+      toast.success("Subtarea convertida a tarea");
+      window.location.reload();
+    } catch (error) {
+      toast.error("Error al promover subtarea");
+    }
+  };
+
   const openCreateForm = useCallback(() => {
     setEditingTask(null);
     setIsFormOpen(true);
@@ -379,10 +392,10 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-slate-900 dark:bg-white flex items-center justify-center">
-                <span className="text-white dark:text-slate-900 font-bold text-sm">TF</span>
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-md shadow-violet-500/20">
+                <span className="text-white font-bold text-sm">TF</span>
               </div>
-              <h1 className="text-lg font-semibold text-slate-900 dark:text-white">TaskFlow</h1>
+              <h1 className="text-lg font-bold bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent dark:from-violet-400 dark:to-indigo-400">TaskFlow</h1>
             </div>
             <div className="flex items-center gap-2">
               <Button
@@ -405,7 +418,7 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
               </Button>
               <Button
                 onClick={openCreateForm}
-                className="rounded-xl px-4 py-2 text-sm font-medium shadow-sm hover:shadow-md transition-all"
+                className="rounded-xl px-4 py-2 text-sm font-semibold shadow-md shadow-violet-500/20 hover:shadow-lg hover:shadow-violet-500/30 transition-all bg-gradient-to-r from-violet-500 to-indigo-600 hover:from-violet-600 hover:to-indigo-700 border-0 text-white"
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Nueva tarea
@@ -452,18 +465,18 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
           {/* Status Filters */}
           <div className="flex flex-wrap gap-2">
             {[
-              { key: "all", label: `Todas (${taskCounts.all})` },
-              { key: "pending", label: `Pendientes (${taskCounts.pending})` },
-              { key: "in_progress", label: `En progreso (${taskCounts.in_progress})` },
-              { key: "completed", label: `Completadas (${taskCounts.completed})` },
+              { key: "all", label: `Todas (${taskCounts.all})`, activeColor: "bg-slate-900 text-white shadow-sm dark:bg-white dark:text-slate-900", inactiveColor: "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-800 dark:hover:bg-slate-800" },
+              { key: "pending", label: `Pendientes (${taskCounts.pending})`, activeColor: "bg-amber-500 text-white shadow-sm shadow-amber-500/25", inactiveColor: "bg-white text-amber-700 border-amber-200 hover:bg-amber-50 dark:bg-slate-900 dark:text-amber-400 dark:border-amber-900/50 dark:hover:bg-amber-950/30" },
+              { key: "in_progress", label: `En progreso (${taskCounts.in_progress})`, activeColor: "bg-indigo-500 text-white shadow-sm shadow-indigo-500/25", inactiveColor: "bg-white text-indigo-700 border-indigo-200 hover:bg-indigo-50 dark:bg-slate-900 dark:text-indigo-400 dark:border-indigo-900/50 dark:hover:bg-indigo-950/30" },
+              { key: "completed", label: `Completadas (${taskCounts.completed})`, activeColor: "bg-emerald-500 text-white shadow-sm shadow-emerald-500/25", inactiveColor: "bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-50 dark:bg-slate-900 dark:text-emerald-400 dark:border-emerald-900/50 dark:hover:bg-emerald-950/30" },
             ].map((filter) => (
               <button
                 key={filter.key}
                 onClick={() => setStatusFilter(filter.key)}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all ${
+                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all border ${
                   statusFilter === filter.key
-                    ? "bg-slate-900 text-white shadow-sm dark:bg-white dark:text-slate-900"
-                    : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-800 dark:hover:bg-slate-800"
+                    ? filter.activeColor
+                    : filter.inactiveColor
                 }`}
               >
                 {filter.label}
@@ -543,6 +556,7 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
                           onEdit={openEditForm}
                           onDelete={openDeleteDialog}
                           onAddSubtask={openSubtaskForm}
+                          onPromoteSubtask={handlePromoteSubtask}
                           subtasks={getSubtasks(task.id)}
                         />
                       </motion.div>
@@ -558,6 +572,7 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
                     onEdit={() => {}}
                     onDelete={() => {}}
                     onAddSubtask={() => {}}
+                    onPromoteSubtask={() => {}}
                     subtasks={getSubtasks(activeDragTask.id)}
                     isDragOverlay
                   />
