@@ -232,53 +232,45 @@ git commit -m "feat: add framer motion animations and micro-interactions"
 
 ---
 
-## 📌 Fase 7: Command Palette (Ctrl+K)
+## 📌 Fase 7: Subtareas, Drag & Drop y Command Palette
 
-**Estado:** ⬜ PENDIENTE
+**Estado:** ✅ COMPLETADA
 
-### 7.1: Instalar dependencia
+### Schema actualizado (`src/db/schema.ts`):
+- Agregado `parentId: integer` para relacionar subtareas con tareas padre
+- Agregado `sortOrder: integer` para persistir el orden de drag & drop
+- Migración regenerada y aplicada en Turso
+
+### Dependencias instaladas:
 ```bash
-npm install cmdk
+npm install cmdk @dnd-kit/core @dnd-kit/sortable @dnd-kit/utilities
 ```
 
-### 7.2: Implementar
-Crear `src/components/command-menu.tsx`:
-- Abrir con `Ctrl+K` / `Cmd+K`
-- Acciones: Crear nuevo, Ver activos, Ver completados
-- Navegación con flechas, Enter para ejecutar
-- Fondo con `backdrop-blur-md`
+### Features implementadas:
+
+| Feature | Detalle |
+|---|---|
+| **Subtareas** | Cada tarea puede tener subtareas anidadas. Botón "+ Subtarea" en cada card. Se muestran colapsables con animación. |
+| **Drag & Drop** | `@dnd-kit` permite arrastrar y reordenar tarjetas. El orden se persiste en `sortOrder`. |
+| **Command Palette** | `Ctrl+K` abre un menú de comandos estilo Notion/Linear. Acciones: crear tarea, filtrar por estado, buscar tareas. |
+| **Keyboard shortcut** | Event listener global detecta `Ctrl+K` / `Cmd+K`. |
+
+### Server Actions actualizadas:
+- `getAllTasks()` - Trae todas las tareas (incluyendo subtareas)
+- `reorderTask(id, newSortOrder)` - Actualiza el orden de una tarea
+- `createTask()` - Ahora acepta `parentId` para crear subtareas
+
+### Componentes nuevos/modificados:
+- `src/components/subtask-form.tsx` - Formulario para crear subtareas
+- `src/components/task-card.tsx` - Ahora muestra subtareas colapsables y botón para agregar
+- `src/components/task-dashboard.tsx` - Integra DndContext, SortableContext y Command Palette
+- `src/app/page.tsx` - Usa `getAllTasks()` para traer tareas padre e hijas
+- `src/db/schema.ts` - Nuevos campos `parentId` y `sortOrder`
 
 ### Commit:
 ```bash
 git add .
-git commit -m "feat: add command palette with keyboard navigation"
-```
-
----
-
-## 📌 Fase 8: Polish y Responsive
-
-**Estado:** ⬜ PENDIENTE
-
-### 8.1: Responsive Design
-- Grid: 1 col (mobile), 2 cols (tablet), 3 cols (desktop)
-- Dialogs fullscreen en mobile: `sm:max-w-lg`
-- Touch targets mínimo 44px
-
-### 8.2: Toasts de confirmación
-Ya instalado con `sonner` en Fase 4.
-Implementar notificaciones para:
-- "Tarea creada exitosamente"
-- "Tarea eliminada"
-- "Error al guardar"
-
-### 8.3: Loading states
-- Skeletons con `animate-pulse`
-
-### Commit:
-```bash
-git add .
-git commit -m "feat: add responsive design, toasts and loading states"
+git commit -m "feat: add subtasks, drag-and-drop and command palette"
 ```
 
 ---

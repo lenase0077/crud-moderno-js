@@ -5,5 +5,7 @@ CREATE TABLE `tasks` (
 	`status` text DEFAULT 'pending',
 	`priority` text DEFAULT 'medium',
 	`due_date` integer,
+	`parent_id` integer,
+	`sort_order` integer DEFAULT 0,
 	`created_at` integer
 );

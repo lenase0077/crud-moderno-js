@@ -34,6 +34,8 @@ interface Task {
   status: "pending" | "in_progress" | "completed";
   priority: "low" | "medium" | "high";
   dueDate: string | null;
+  parentId: number | null;
+  sortOrder: number;
   createdAt: string;
 }
 
