@@ -1,6 +1,6 @@
 "use client";
 
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import {
@@ -11,6 +11,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -37,6 +44,7 @@ export function SubtaskForm({ open, onOpenChange, parentId, onSubmit }: SubtaskF
     register,
     handleSubmit,
     reset,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<SubtaskFormData>({
     resolver: zodResolver(subtaskSchema),
@@ -69,7 +77,7 @@ export function SubtaskForm({ open, onOpenChange, parentId, onSubmit }: SubtaskF
       <DialogContent className="sm:max-w-lg rounded-2xl">
         <DialogHeader>
           <DialogTitle className="text-lg">Nueva subtarea</DialogTitle>
-          <DialogDescription className="text-sm text-slate-500">
+          <DialogDescription className="text-sm text-muted-foreground">
             Agregá una subtarea a esta tarea.
           </DialogDescription>
         </DialogHeader>
@@ -77,7 +85,7 @@ export function SubtaskForm({ open, onOpenChange, parentId, onSubmit }: SubtaskF
         <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-5 mt-2">
           <div className="space-y-2">
             <Label htmlFor="subtask-title" className="text-sm font-medium">
-              Título <span className="text-rose-500">*</span>
+              Título <span className="text-destructive">*</span>
             </Label>
             <Input
               id="subtask-title"
@@ -86,7 +94,7 @@ export function SubtaskForm({ open, onOpenChange, parentId, onSubmit }: SubtaskF
               {...register("title")}
             />
             {errors.title && (
-              <p className="text-xs text-rose-500 mt-1">{errors.title.message}</p>
+              <p className="text-xs text-destructive mt-1">{errors.title.message}</p>
             )}
           </div>
 
@@ -104,18 +112,23 @@ export function SubtaskForm({ open, onOpenChange, parentId, onSubmit }: SubtaskF
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="subtask-priority" className="text-sm font-medium">
-                Prioridad
-              </Label>
-              <select
-                id="subtask-priority"
-                className="flex h-9 w-full rounded-xl border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                {...register("priority")}
-              >
-                <option value="low">Baja</option>
-                <option value="medium">Media</option>
-                <option value="high">Alta</option>
-              </select>
+              <Label className="text-sm font-medium">Prioridad</Label>
+              <Controller
+                name="priority"
+                control={control}
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger className="rounded-xl">
+                      <SelectValue placeholder="Prioridad" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl">
+                      <SelectItem value="low">Baja</SelectItem>
+                      <SelectItem value="medium">Media</SelectItem>
+                      <SelectItem value="high">Alta</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
             </div>
 
             <div className="space-y-2">
@@ -143,7 +156,7 @@ export function SubtaskForm({ open, onOpenChange, parentId, onSubmit }: SubtaskF
             <Button
               type="submit"
               disabled={isSubmitting}
-              className="rounded-xl flex-1"
+              className="rounded-xl flex-1 bg-gradient-to-r from-violet-500 to-indigo-600 hover:from-violet-600 hover:to-indigo-700 border-0 text-white"
             >
               {isSubmitting ? "Guardando..." : "Crear subtarea"}
             </Button>

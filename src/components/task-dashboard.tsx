@@ -41,6 +41,7 @@ import {
   DragEndEvent,
   DragOverlay,
   DragStartEvent,
+  useDroppable,
 } from "@dnd-kit/core";
 import {
   arrayMove,
@@ -94,6 +95,7 @@ function KanbanCard({
   onDelete,
   onAddSubtask,
   onPromoteSubtask,
+  onToggleComplete,
   isOverlay,
 }: {
   task: Task;
@@ -102,6 +104,7 @@ function KanbanCard({
   onDelete: (task: Task) => void;
   onAddSubtask: (parentId: number) => void;
   onPromoteSubtask: (subtaskId: number) => void;
+  onToggleComplete: (task: Task) => void;
   isOverlay?: boolean;
 }) {
   const {
@@ -148,15 +151,31 @@ function KanbanCard({
         <div className="pl-3">
           {/* Header */}
           <div className="flex items-start justify-between gap-2 mb-1.5">
-            <h3 className="text-sm font-medium text-foreground leading-snug line-clamp-2 flex-1">
-              {task.title}
-            </h3>
+            <div className="flex items-start gap-2 flex-1 min-w-0">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleComplete(task);
+                }}
+                className="shrink-0 mt-0.5 p-0.5 rounded hover:bg-secondary transition-colors"
+                title={task.status === "completed" ? "Marcar como pendiente" : "Marcar como completada"}
+              >
+                {task.status === "completed" ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                ) : (
+                  <Circle className="w-4 h-4 text-muted-foreground hover:text-primary transition-colors" />
+                )}
+              </button>
+              <h3 className={`text-sm font-medium leading-snug line-clamp-2 flex-1 ${task.status === "completed" ? "line-through text-muted-foreground" : "text-foreground"}`}>
+                {task.title}
+              </h3>
+            </div>
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 onEdit(task);
               }}
-              className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground"
+              className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground shrink-0"
             >
               <MoreHorizontal className="w-3.5 h-3.5" />
             </button>
@@ -272,6 +291,7 @@ function KanbanColumn({
   onDelete,
   onAddSubtask,
   onPromoteSubtask,
+  onToggleComplete,
   onAddTask,
 }: {
   column: typeof COLUMNS[number];
@@ -281,8 +301,11 @@ function KanbanColumn({
   onDelete: (task: Task) => void;
   onAddSubtask: (parentId: number) => void;
   onPromoteSubtask: (subtaskId: number) => void;
+  onToggleComplete: (task: Task) => void;
   onAddTask: () => void;
 }) {
+  const { setNodeRef, isOver } = useDroppable({ id: column.id, data: { columnId: column.id } });
+
   return (
     <div className="flex flex-col w-full min-w-[300px] max-w-[350px]">
       {/* Column header */}
@@ -304,35 +327,41 @@ function KanbanColumn({
         </button>
       </div>
 
-      {/* Column content */}
-      <SortableContext
-        items={tasks.map((t) => t.id)}
-        strategy={verticalListSortingStrategy}
+      {/* Column content - droppable area */}
+      <div
+        ref={setNodeRef}
+        className={`flex-1 rounded-xl transition-colors ${isOver ? "bg-primary/5 ring-2 ring-primary/20" : ""}`}
       >
-        <div className="flex-1 space-y-2 min-h-[100px]">
-          <AnimatePresence mode="popLayout">
-            {tasks.map((task) => (
-              <motion.div
-                key={task.id}
-                layout
-                initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.15 } }}
-                transition={{ type: "spring", stiffness: 500, damping: 30 }}
-              >
-                <KanbanCard
-                  task={task}
-                  subtasks={allTasks.filter((t) => t.parentId === task.id)}
-                  onEdit={onEdit}
-                  onDelete={onDelete}
-                  onAddSubtask={onAddSubtask}
-                  onPromoteSubtask={onPromoteSubtask}
-                />
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
-      </SortableContext>
+        <SortableContext
+          items={tasks.map((t) => t.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          <div className="space-y-2 min-h-[100px] p-1">
+            <AnimatePresence mode="popLayout">
+              {tasks.map((task) => (
+                <motion.div
+                  key={task.id}
+                  layout
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.15 } }}
+                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                >
+                  <KanbanCard
+                    task={task}
+                    subtasks={allTasks.filter((t) => t.parentId === task.id)}
+                    onEdit={onEdit}
+                    onDelete={onDelete}
+                    onAddSubtask={onAddSubtask}
+                    onPromoteSubtask={onPromoteSubtask}
+                    onToggleComplete={onToggleComplete}
+                  />
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+        </SortableContext>
+      </div>
 
       {/* Add card button */}
       <button
@@ -404,69 +433,77 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
     if (!over) return;
 
     const draggedId = active.id as number;
-    const overId = over.id as number;
     const draggedTask = tasks.find((t) => t.id === draggedId);
-
     if (!draggedTask) return;
 
-    // If dropped over another card
-    if (draggedId !== overId) {
-      const overTask = tasks.find((t) => t.id === overId);
+    // Check if dropped over a column (string id like "pending", "in_progress", "completed")
+    const columnId = over.data.current?.columnId || (typeof over.id === "string" ? over.id : null);
+    const overTask = tasks.find((t) => t.id === (over.id as number));
 
-      if (overTask) {
-        // Same column -> reorder
-        if (draggedTask.status === overTask.status && draggedTask.parentId === overTask.parentId) {
-          const columnTasks = getColumnTasks(draggedTask.status);
-          const oldIndex = columnTasks.findIndex((t) => t.id === draggedId);
-          const newIndex = columnTasks.findIndex((t) => t.id === overId);
+    // Dropped over a column area (not over another card)
+    if (columnId && COLUMNS.some((c) => c.id === columnId) && draggedTask.status !== columnId) {
+      try {
+        await updateTaskStatus(draggedId, columnId);
+        setTasks((prev) =>
+          prev.map((t) => (t.id === draggedId ? { ...t, status: columnId as Task["status"] } : t))
+        );
+        toast.success(`Movido a ${COLUMNS.find((c) => c.id === columnId)?.title}`);
+      } catch (error) {
+        toast.error("Error al mover");
+      }
+      return;
+    }
 
-          if (oldIndex !== -1 && newIndex !== -1) {
-            const newColumnTasks = arrayMove(columnTasks, oldIndex, newIndex);
-            const otherTasks = tasks.filter((t) => t.status !== draggedTask.status || t.parentId !== null);
-            setTasks([...otherTasks, ...newColumnTasks]);
+    // Dropped over another card
+    if (overTask && draggedId !== overTask.id) {
+      // Same column -> reorder
+      if (draggedTask.status === overTask.status && draggedTask.parentId === overTask.parentId) {
+        const columnTasks = getColumnTasks(draggedTask.status);
+        const oldIndex = columnTasks.findIndex((t) => t.id === draggedId);
+        const newIndex = columnTasks.findIndex((t) => t.id === overTask.id);
 
-            try {
-              await Promise.all(
-                newColumnTasks.map((task, index) => reorderTask(task.id, index))
-              );
-            } catch (error) {
-              toast.error("Error al reordenar");
-            }
-          }
-          return;
-        }
+        if (oldIndex !== -1 && newIndex !== -1) {
+          const newColumnTasks = arrayMove(columnTasks, oldIndex, newIndex);
+          const otherTasks = tasks.filter((t) => t.status !== draggedTask.status || t.parentId !== null);
+          setTasks([...otherTasks, ...newColumnTasks]);
 
-        // Different column -> move status
-        if (draggedTask.status !== overTask.status) {
           try {
-            await updateTaskStatus(draggedId, overTask.status);
-            setTasks((prev) =>
-              prev.map((t) =>
-                t.id === draggedId ? { ...t, status: overTask.status } : t
-              )
+            await Promise.all(
+              newColumnTasks.map((task, index) => reorderTask(task.id, index))
             );
-            toast.success(`Movido a ${COLUMNS.find((c) => c.id === overTask.status)?.title}`);
           } catch (error) {
-            toast.error("Error al mover");
+            toast.error("Error al reordenar");
           }
-          return;
         }
+        return;
+      }
 
-        // Make subtask
-        if (draggedTask.parentId === null && overTask.parentId === null) {
-          try {
-            await moveTask(draggedId, overId);
-            setTasks((prev) =>
-              prev.map((t) =>
-                t.id === draggedId ? { ...t, parentId: overId } : t
-              )
-            );
-            toast.success(`Convertido a subtarea`);
-          } catch (error) {
-            toast.error("Error al convertir");
-          }
-          return;
+      // Different column -> move status
+      if (draggedTask.status !== overTask.status) {
+        try {
+          await updateTaskStatus(draggedId, overTask.status);
+          setTasks((prev) =>
+            prev.map((t) => (t.id === draggedId ? { ...t, status: overTask.status } : t))
+          );
+          toast.success(`Movido a ${COLUMNS.find((c) => c.id === overTask.status)?.title}`);
+        } catch (error) {
+          toast.error("Error al mover");
         }
+        return;
+      }
+
+      // Make subtask
+      if (draggedTask.parentId === null && overTask.parentId === null) {
+        try {
+          await moveTask(draggedId, overTask.id);
+          setTasks((prev) =>
+            prev.map((t) => (t.id === draggedId ? { ...t, parentId: overTask.id } : t))
+          );
+          toast.success(`Convertido a subtarea`);
+        } catch (error) {
+          toast.error("Error al convertir");
+        }
+        return;
       }
     }
   };
@@ -535,6 +572,19 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
       toast.success("Subtarea promovida");
     } catch (error) {
       toast.error("Error al promover");
+    }
+  };
+
+  const handleToggleComplete = async (task: Task) => {
+    const newStatus = task.status === "completed" ? "pending" : "completed";
+    try {
+      await updateTaskStatus(task.id, newStatus);
+      setTasks((prev) =>
+        prev.map((t) => (t.id === task.id ? { ...t, status: newStatus } : t))
+      );
+      toast.success(newStatus === "completed" ? "Tarea completada" : "Tarea pendiente");
+    } catch (error) {
+      toast.error("Error al actualizar estado");
     }
   };
 
@@ -651,6 +701,7 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
                   onDelete={openDeleteDialog}
                   onAddSubtask={openSubtaskForm}
                   onPromoteSubtask={handlePromoteSubtask}
+                  onToggleComplete={handleToggleComplete}
                   onAddTask={() => openCreateForm(column.id)}
                 />
               ))}
@@ -665,6 +716,7 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
                   onDelete={() => {}}
                   onAddSubtask={() => {}}
                   onPromoteSubtask={() => {}}
+                  onToggleComplete={() => {}}
                   isOverlay
                 />
               ) : null}

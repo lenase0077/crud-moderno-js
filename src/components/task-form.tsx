@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import {
@@ -12,6 +12,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -54,6 +61,7 @@ export function TaskForm({ open, onOpenChange, task, defaultStatus = "pending", 
     register,
     handleSubmit,
     reset,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<TaskFormData>({
     resolver: zodResolver(taskSchema),
@@ -86,15 +94,15 @@ export function TaskForm({ open, onOpenChange, task, defaultStatus = "pending", 
         dueDate: "",
       });
     }
-  }, [task, reset]);
+  }, [task, reset, defaultStatus]);
 
   const onFormSubmit = async (data: TaskFormData) => {
     const formData = new FormData();
     formData.append("title", data.title);
-    formData.append("description", data.description || "");
+    formData.append("description", data.description);
     formData.append("status", data.status);
     formData.append("priority", data.priority);
-    formData.append("dueDate", data.dueDate || "");
+    formData.append("dueDate", data.dueDate);
 
     await onSubmit(formData);
     onOpenChange(false);
@@ -108,7 +116,7 @@ export function TaskForm({ open, onOpenChange, task, defaultStatus = "pending", 
           <DialogTitle className="text-lg">
             {isEditing ? "Editar tarea" : "Nueva tarea"}
           </DialogTitle>
-          <DialogDescription className="text-sm text-slate-500">
+          <DialogDescription className="text-sm text-muted-foreground">
             {isEditing
               ? "Actualizá los datos de la tarea."
               : "Completá los campos para crear una nueva tarea."}
@@ -118,7 +126,7 @@ export function TaskForm({ open, onOpenChange, task, defaultStatus = "pending", 
         <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-5 mt-2">
           <div className="space-y-2">
             <Label htmlFor="title" className="text-sm font-medium">
-              Título <span className="text-rose-500">*</span>
+              Título <span className="text-destructive">*</span>
             </Label>
             <Input
               id="title"
@@ -127,7 +135,7 @@ export function TaskForm({ open, onOpenChange, task, defaultStatus = "pending", 
               {...register("title")}
             />
             {errors.title && (
-              <p className="text-xs text-rose-500 mt-1">{errors.title.message}</p>
+              <p className="text-xs text-destructive mt-1">{errors.title.message}</p>
             )}
           </div>
 
@@ -142,7 +150,7 @@ export function TaskForm({ open, onOpenChange, task, defaultStatus = "pending", 
               {...register("description")}
             />
             {errors.description && (
-              <p className="text-xs text-rose-500 mt-1">
+              <p className="text-xs text-destructive mt-1">
                 {errors.description.message}
               </p>
             )}
@@ -150,33 +158,43 @@ export function TaskForm({ open, onOpenChange, task, defaultStatus = "pending", 
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="status" className="text-sm font-medium">
-                Estado
-              </Label>
-              <select
-                id="status"
-                className="flex h-9 w-full rounded-xl border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                {...register("status")}
-              >
-                <option value="pending">Pendiente</option>
-                <option value="in_progress">En progreso</option>
-                <option value="completed">Completada</option>
-              </select>
+              <Label className="text-sm font-medium">Estado</Label>
+              <Controller
+                name="status"
+                control={control}
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger className="rounded-xl">
+                      <SelectValue placeholder="Seleccionar estado" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl">
+                      <SelectItem value="pending">Pendiente</SelectItem>
+                      <SelectItem value="in_progress">En progreso</SelectItem>
+                      <SelectItem value="completed">Completada</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="priority" className="text-sm font-medium">
-                Prioridad
-              </Label>
-              <select
-                id="priority"
-                className="flex h-9 w-full rounded-xl border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                {...register("priority")}
-              >
-                <option value="low">Baja</option>
-                <option value="medium">Media</option>
-                <option value="high">Alta</option>
-              </select>
+              <Label className="text-sm font-medium">Prioridad</Label>
+              <Controller
+                name="priority"
+                control={control}
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger className="rounded-xl">
+                      <SelectValue placeholder="Seleccionar prioridad" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl">
+                      <SelectItem value="low">Baja</SelectItem>
+                      <SelectItem value="medium">Media</SelectItem>
+                      <SelectItem value="high">Alta</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
             </div>
           </div>
 
@@ -204,7 +222,7 @@ export function TaskForm({ open, onOpenChange, task, defaultStatus = "pending", 
             <Button
               type="submit"
               disabled={isSubmitting}
-              className="rounded-xl flex-1"
+              className="rounded-xl flex-1 bg-gradient-to-r from-violet-500 to-indigo-600 hover:from-violet-600 hover:to-indigo-700 border-0 text-white"
             >
               {isSubmitting
                 ? "Guardando..."
