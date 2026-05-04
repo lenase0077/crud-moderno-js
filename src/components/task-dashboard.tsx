@@ -39,6 +39,7 @@ import {
   useSensor,
   useSensors,
   DragEndEvent,
+  DragOverEvent,
   DragOverlay,
   DragStartEvent,
   useDroppable,
@@ -293,6 +294,7 @@ function KanbanColumn({
   onPromoteSubtask,
   onToggleComplete,
   onAddTask,
+  isColumnOver,
 }: {
   column: typeof COLUMNS[number];
   tasks: Task[];
@@ -303,6 +305,7 @@ function KanbanColumn({
   onPromoteSubtask: (subtaskId: number) => void;
   onToggleComplete: (task: Task) => void;
   onAddTask: () => void;
+  isColumnOver?: boolean;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id, data: { columnId: column.id } });
 
@@ -330,7 +333,7 @@ function KanbanColumn({
       {/* Column content - droppable area */}
       <div
         ref={setNodeRef}
-        className={`flex-1 rounded-xl transition-colors ${isOver ? "bg-primary/5 ring-2 ring-primary/20" : ""}`}
+        className={`flex-1 rounded-xl transition-colors ${(isOver || isColumnOver) ? "bg-primary/5 ring-2 ring-primary/20" : ""}`}
       >
         <SortableContext
           items={tasks.map((t) => t.id)}
@@ -381,6 +384,7 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [commandOpen, setCommandOpen] = useState(false);
   const [activeDragId, setActiveDragId] = useState<number | null>(null);
+  const [overColumnId, setOverColumnId] = useState<string | null>(null);
 
   // Modals
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -426,9 +430,35 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
     setActiveDragId(event.active.id as number);
   };
 
+  const handleDragOver = (event: DragOverEvent) => {
+    const { over } = event;
+    if (!over) {
+      setOverColumnId(null);
+      return;
+    }
+
+    // Dropped over a column directly
+    const columnId = over.data.current?.columnId || (typeof over.id === "string" ? over.id : null);
+    if (columnId && COLUMNS.some((c) => c.id === columnId)) {
+      setOverColumnId(columnId);
+      return;
+    }
+
+    // Dropped over a card - find which column that card belongs to
+    const overTaskId = over.id as number;
+    const overTask = tasks.find((t) => t.id === overTaskId);
+    if (overTask) {
+      setOverColumnId(overTask.status);
+      return;
+    }
+
+    setOverColumnId(null);
+  };
+
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveDragId(null);
+    setOverColumnId(null);
 
     if (!over) return;
 
@@ -688,6 +718,7 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
             sensors={sensors}
             collisionDetection={closestCorners}
             onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
           >
             <div className="flex gap-4 h-full">
@@ -697,6 +728,7 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
                   column={column}
                   tasks={getColumnTasks(column.id)}
                   allTasks={tasks}
+                  isColumnOver={overColumnId === column.id}
                   onEdit={openEditForm}
                   onDelete={openDeleteDialog}
                   onAddSubtask={openSubtaskForm}
