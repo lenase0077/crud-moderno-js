@@ -117,24 +117,29 @@ git commit -m "feat: add server actions for task crud operations"
 
 ## 📌 Fase 4: UI Base con shadcn/ui
 
-**Estado:** ⬜ PENDIENTE
+**Estado:** ✅ COMPLETADA
 
-### 4.1: Inicializar shadcn
+### Acciones realizadas:
+- ✅ 4.1: Instaladas dependencias base (`class-variance-authority`, `clsx`, `tailwind-merge`, `lucide-react`)
+- ✅ 4.2: Creado `src/lib/utils.ts` (función `cn()`)
+- ✅ 4.3: Creado `components.json` (configuración shadcn)
+- ✅ 4.4: Creados componentes UI personalizados:
+  - `button.tsx` - Botones con variantes (default, outline, ghost, destructive, etc.)
+  - `card.tsx` - Cards con header, title, description, content, footer
+  - `badge.tsx` - Badges con variantes de color
+  - `input.tsx` - Inputs estilizados
+  - `textarea.tsx` - Textareas estilizados
+  - `label.tsx` - Labels de formularios
+  - `dialog.tsx` - Modales con Radix UI (overlay, animaciones, backdrop blur)
+  - `sonner.tsx` - Toasts/notificaciones (posición bottom-right, rich colors)
+- ✅ 4.5: Actualizado `globals.css` con variables CSS de tema y animaciones para dialogs
+- ✅ 4.6: Actualizado `layout.tsx` con título "TaskFlow", idioma español y Toaster
+
+### Dependencias instaladas:
 ```bash
-npx shadcn-ui@latest init
+npm install class-variance-authority clsx tailwind-merge lucide-react
+npm install @radix-ui/react-dialog sonner
 ```
-Seleccionar:
-- Style: **New York**
-- Base color: **Slate** o **Zinc**
-- CSS variables: **Yes**
-
-### 4.2: Instalar componentes necesarios
-```bash
-npx shadcn-ui@latest add button input textarea dialog card dropdown-menu badge command sonner
-```
-
-### 4.3: Configurar fuente
-En `src/app/layout.tsx`, usar fuente Geist o Inter.
 
 ### Commit:
 ```bash
