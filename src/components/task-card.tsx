@@ -34,6 +34,7 @@ interface TaskCardProps {
   onDelete: (task: Task) => void;
   onAddSubtask?: (parentId: number) => void;
   subtasks?: Task[];
+  isDragOverlay?: boolean;
 }
 
 const statusConfig = {
@@ -48,7 +49,7 @@ const priorityConfig = {
   high: { label: "Alta", color: "bg-rose-50 text-rose-700" },
 };
 
-export function TaskCard({ task, onEdit, onDelete, onAddSubtask, subtasks = [] }: TaskCardProps) {
+export function TaskCard({ task, onEdit, onDelete, onAddSubtask, subtasks = [], isDragOverlay }: TaskCardProps) {
   const status = statusConfig[task.status];
   const priority = priorityConfig[task.priority];
   const [showSubtasks, setShowSubtasks] = useState(false);
@@ -57,20 +58,20 @@ export function TaskCard({ task, onEdit, onDelete, onAddSubtask, subtasks = [] }
 
   return (
     <motion.div
-      whileHover={{ y: -4, transition: { type: "spring", stiffness: 400, damping: 20 } }}
-      whileTap={{ scale: 0.98 }}
+      whileHover={isDragOverlay ? undefined : { y: -4, transition: { type: "spring", stiffness: 400, damping: 20 } }}
+      whileTap={isDragOverlay ? undefined : { scale: 0.98 }}
     >
-      <Card className="group relative rounded-2xl border border-slate-200/60 bg-white shadow-sm hover:shadow-md transition-shadow duration-300">
+      <Card className={`group relative rounded-2xl border border-slate-200/60 dark:border-slate-800/60 bg-white dark:bg-slate-900 shadow-sm hover:shadow-md transition-shadow duration-300 ${isDragOverlay ? 'shadow-xl ring-2 ring-slate-900/10 dark:ring-white/10 rotate-2' : ''}`}>
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-2 flex-1 min-w-0">
-              <GripVertical className="w-4 h-4 text-slate-300 mt-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab" />
+              <GripVertical className="w-4 h-4 text-slate-300 dark:text-slate-600 mt-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab" />
               <div className="min-w-0">
-                <CardTitle className="text-base font-semibold text-slate-900 truncate leading-tight">
+                <CardTitle className="text-base font-semibold text-slate-900 dark:text-slate-100 truncate leading-tight">
                   {task.title}
                 </CardTitle>
                 {task.description && (
-                  <CardDescription className="text-sm text-slate-500 mt-1 line-clamp-2">
+                  <CardDescription className="text-sm text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">
                     {task.description}
                   </CardDescription>
                 )}
@@ -80,7 +81,7 @@ export function TaskCard({ task, onEdit, onDelete, onAddSubtask, subtasks = [] }
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                className="h-8 w-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 dark:hover:text-slate-200"
                 onClick={() => onEdit(task)}
               >
                 <Pencil className="w-3.5 h-3.5" />
@@ -88,7 +89,7 @@ export function TaskCard({ task, onEdit, onDelete, onAddSubtask, subtasks = [] }
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                className="h-8 w-8 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30"
                 onClick={() => onDelete(task)}
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -114,7 +115,7 @@ export function TaskCard({ task, onEdit, onDelete, onAddSubtask, subtasks = [] }
           </div>
         </CardContent>
 
-        <CardFooter className="pt-0 text-xs text-slate-400 flex items-center justify-between">
+        <CardFooter className="pt-0 text-xs text-slate-400 dark:text-slate-500 flex items-center justify-between">
           <div className="flex items-center gap-3">
             {task.dueDate && (
               <span className="flex items-center gap-1">
@@ -132,7 +133,7 @@ export function TaskCard({ task, onEdit, onDelete, onAddSubtask, subtasks = [] }
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 px-2 text-xs text-slate-500 hover:text-slate-700 rounded-lg"
+                className="h-7 px-2 text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 rounded-lg"
                 onClick={() => onAddSubtask(task.id)}
               >
                 <Plus className="w-3 h-3 mr-1" />
@@ -142,7 +143,7 @@ export function TaskCard({ task, onEdit, onDelete, onAddSubtask, subtasks = [] }
             {hasSubtasks && (
               <button
                 onClick={() => setShowSubtasks(!showSubtasks)}
-                className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 transition-colors"
+                className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
               >
                 {showSubtasks ? (
                   <ChevronDown className="w-3.5 h-3.5" />
@@ -164,11 +165,11 @@ export function TaskCard({ task, onEdit, onDelete, onAddSubtask, subtasks = [] }
             transition={{ duration: 0.2 }}
             className="px-6 pb-4"
           >
-            <div className="border-l-2 border-slate-100 pl-4 space-y-2 mt-1">
+            <div className="border-l-2 border-slate-100 dark:border-slate-800 pl-4 space-y-2 mt-1">
               {subtasks.map((subtask) => (
                 <div
                   key={subtask.id}
-                  className="flex items-center justify-between py-2 px-3 rounded-lg bg-slate-50/80 hover:bg-slate-100/80 transition-colors"
+                  className="flex items-center justify-between py-2 px-3 rounded-lg bg-slate-50/80 dark:bg-slate-800/50 hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-colors"
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <div
@@ -180,13 +181,13 @@ export function TaskCard({ task, onEdit, onDelete, onAddSubtask, subtasks = [] }
                           : "bg-amber-400"
                       }`}
                     />
-                    <span className="text-sm text-slate-700 truncate">{subtask.title}</span>
+                    <span className="text-sm text-slate-700 dark:text-slate-300 truncate">{subtask.title}</span>
                   </div>
                   <div className="flex gap-1 shrink-0">
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-6 w-6 rounded text-slate-400 hover:text-slate-700"
+                      className="h-6 w-6 rounded text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
                       onClick={() => onEdit(subtask)}
                     >
                       <Pencil className="w-3 h-3" />

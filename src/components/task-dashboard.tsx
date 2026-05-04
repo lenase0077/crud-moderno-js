@@ -13,6 +13,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import {
   Plus,
@@ -24,6 +25,8 @@ import {
   Clock,
   Trash2,
   Command as CommandIcon,
+  Moon,
+  Sun,
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
@@ -35,6 +38,9 @@ import {
   useSensor,
   useSensors,
   DragEndEvent,
+  DragOverEvent,
+  DragOverlay,
+  DragStartEvent,
 } from "@dnd-kit/core";
 import {
   arrayMove,
@@ -51,11 +57,13 @@ import { TaskCard } from "@/components/task-card";
 import { TaskForm } from "@/components/task-form";
 import { SubtaskForm } from "@/components/subtask-form";
 import { DeleteDialog } from "@/components/delete-dialog";
+import { useTheme } from "@/components/theme-provider";
 import {
   createTask,
   updateTask,
   deleteTask,
   reorderTask,
+  moveTask,
 } from "@/app/actions";
 
 interface Task {
@@ -80,12 +88,14 @@ function SortableTaskCard({
   onDelete,
   onAddSubtask,
   subtasks,
+  isDragOverlay,
 }: {
   task: Task;
   onEdit: (task: Task) => void;
   onDelete: (task: Task) => void;
   onAddSubtask: (parentId: number) => void;
   subtasks: Task[];
+  isDragOverlay?: boolean;
 }) {
   const {
     attributes,
@@ -99,7 +109,7 @@ function SortableTaskCard({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging ? 0.4 : 1,
   };
 
   return (
@@ -110,12 +120,14 @@ function SortableTaskCard({
         onDelete={onDelete}
         onAddSubtask={onAddSubtask}
         subtasks={subtasks}
+        isDragOverlay={isDragOverlay}
       />
     </div>
   );
 }
 
 export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
+  const { theme, toggleTheme } = useTheme();
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -131,6 +143,7 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
   const [deletingTask, setDeletingTask] = useState<Task | null>(null);
 
   const [commandOpen, setCommandOpen] = useState(false);
+  const [activeDragId, setActiveDragId] = useState<number | null>(null);
 
   // Keyboard shortcut for Command Palette
   useEffect(() => {
@@ -165,26 +178,67 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
     })
   );
 
-  const handleDragEnd = async (event: DragEndEvent) => {
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveDragId(event.active.id as number);
+  };
+
+  const handleDragOver = (event: DragOverEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
-    const oldIndex = filteredTasks.findIndex((t) => t.id === active.id);
-    const newIndex = filteredTasks.findIndex((t) => t.id === over.id);
+    // Visual feedback could be added here
+  };
 
-    const newTasks = arrayMove(filteredTasks, oldIndex, newIndex);
-    setTasks((prev) => {
-      const others = prev.filter((t) => t.parentId !== null || !filteredTasks.find((ft) => ft.id === t.id));
-      return [...newTasks, ...others];
-    });
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveDragId(null);
 
-    try {
-      await Promise.all(
-        newTasks.map((task, index) => reorderTask(task.id, index))
-      );
-      toast.success("Orden actualizado");
-    } catch (error) {
-      toast.error("Error al reordenar");
+    if (!over) return;
+
+    const draggedId = active.id as number;
+    const overId = over.id as number;
+
+    // If dropped over another task -> convert to subtask
+    if (draggedId !== overId) {
+      const draggedTask = tasks.find((t) => t.id === draggedId);
+      const overTask = tasks.find((t) => t.id === overId);
+
+      if (draggedTask && overTask && draggedTask.parentId === null) {
+        // Check if we're dropping in the same sortable context (reorder)
+        // or on top of another task (make subtask)
+        // If the pointer is directly over another card, convert to subtask
+        try {
+          await moveTask(draggedId, overId);
+          toast.success(`"${draggedTask.title}" ahora es subtarea de "${overTask.title}"`);
+          window.location.reload();
+          return;
+        } catch (error) {
+          toast.error("Error al mover la tarea");
+        }
+      }
+    }
+
+    // Reorder within same level
+    if (over && draggedId !== overId) {
+      const oldIndex = filteredTasks.findIndex((t) => t.id === draggedId);
+      const newIndex = filteredTasks.findIndex((t) => t.id === overId);
+
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const newTasks = arrayMove(filteredTasks, oldIndex, newIndex);
+        setTasks((prev) => {
+          const others = prev.filter((t) => t.parentId !== null || !filteredTasks.find((ft) => ft.id === t.id));
+          return [...newTasks, ...others];
+        });
+
+        try {
+          await Promise.all(
+            newTasks.map((task, index) => reorderTask(task.id, index))
+          );
+          toast.success("Orden actualizado");
+        } catch (error) {
+          toast.error("Error al reordenar");
+        }
+      }
     }
   };
 
@@ -316,23 +370,34 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
     },
   ];
 
+  const activeDragTask = activeDragId ? tasks.find((t) => t.id === activeDragId) : null;
+
   return (
     <div className="min-h-full">
       {/* Header */}
-      <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200/60">
+      <header className="sticky top-0 z-30 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-b border-slate-200/60 dark:border-slate-800/60">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center">
-                <span className="text-white font-bold text-sm">TF</span>
+              <div className="w-8 h-8 rounded-lg bg-slate-900 dark:bg-white flex items-center justify-center">
+                <span className="text-white dark:text-slate-900 font-bold text-sm">TF</span>
               </div>
-              <h1 className="text-lg font-semibold text-slate-900">TaskFlow</h1>
+              <h1 className="text-lg font-semibold text-slate-900 dark:text-white">TaskFlow</h1>
             </div>
             <div className="flex items-center gap-2">
               <Button
                 variant="ghost"
+                size="icon"
+                className="rounded-lg h-9 w-9 text-slate-500 dark:text-slate-400"
+                onClick={toggleTheme}
+                title={theme === "light" ? "Modo oscuro" : "Modo claro"}
+              >
+                {theme === "light" ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+              </Button>
+              <Button
+                variant="ghost"
                 size="sm"
-                className="hidden sm:flex items-center gap-2 text-slate-500 rounded-lg"
+                className="hidden sm:flex items-center gap-2 text-slate-500 dark:text-slate-400 rounded-lg"
                 onClick={() => setCommandOpen(true)}
               >
                 <CommandIcon className="w-3.5 h-3.5" />
@@ -397,8 +462,8 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
                 onClick={() => setStatusFilter(filter.key)}
                 className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all ${
                   statusFilter === filter.key
-                    ? "bg-slate-900 text-white shadow-sm"
-                    : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+                    ? "bg-slate-900 text-white shadow-sm dark:bg-white dark:text-slate-900"
+                    : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-800 dark:hover:bg-slate-800"
                 }`}
               >
                 {filter.label}
@@ -423,6 +488,8 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
+              onDragStart={handleDragStart}
+              onDragOver={handleDragOver}
               onDragEnd={handleDragEnd}
             >
               <SortableContext
@@ -483,6 +550,19 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
                   </AnimatePresence>
                 </motion.div>
               </SortableContext>
+
+              <DragOverlay>
+                {activeDragTask ? (
+                  <SortableTaskCard
+                    task={activeDragTask}
+                    onEdit={() => {}}
+                    onDelete={() => {}}
+                    onAddSubtask={() => {}}
+                    subtasks={getSubtasks(activeDragTask.id)}
+                    isDragOverlay
+                  />
+                ) : null}
+              </DragOverlay>
             </DndContext>
           )}
         </AnimatePresence>
@@ -491,6 +571,7 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
       {/* Command Palette */}
       <Dialog open={commandOpen} onOpenChange={setCommandOpen}>
         <DialogContent className="p-0 gap-0 overflow-hidden border-0 shadow-2xl max-w-xl">
+          <DialogTitle className="sr-only">Menú de comandos</DialogTitle>
           <Command className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-group]]:px-2 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5">
             <CommandInput placeholder="Buscar acciones o tareas..." />
             <CommandList>

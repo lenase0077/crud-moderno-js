@@ -16,13 +16,13 @@ export function EmptyState({ onCreateClick }: EmptyStateProps) {
       transition={{ type: "spring", stiffness: 300, damping: 25 }}
       className="flex flex-col items-center justify-center py-20 px-4 text-center"
     >
-      <div className="w-20 h-20 rounded-2xl bg-slate-100 flex items-center justify-center mb-6">
-        <ClipboardList className="w-10 h-10 text-slate-400" />
+      <div className="w-20 h-20 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-6">
+        <ClipboardList className="w-10 h-10 text-slate-400 dark:text-slate-500" />
       </div>
-      <h3 className="text-xl font-semibold text-slate-900 mb-2">
+      <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">
         No hay tareas aún
       </h3>
-      <p className="text-sm text-slate-500 max-w-sm mb-8">
+      <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm mb-8">
         Comienza creando tu primera tarea para organizar tu día. Puedes añadir título, descripción, prioridad y fecha límite.
       </p>
       <Button

@@ -275,6 +275,39 @@ git commit -m "feat: add subtasks, drag-and-drop and command palette"
 
 ---
 
+## 📌 Fase 8: Dark Mode, Protección PIN y Drag-to-Subtask
+
+**Estado:** ✅ COMPLETADA
+
+### Features implementadas:
+
+| Feature | Detalle |
+|---|---|
+| **Dark Mode** | Toggle en el header. Persiste en localStorage. Variables CSS cambian automáticamente. |
+| **Protección PIN** | Pantalla de bloqueo al entrar. PIN se guarda en localStorage. Persiste la sesión con `taskflow-pin-verified`. Botón de bloqueo en esquina inferior izquierda. |
+| **Drag-to-Subtask** | Arrastrar una tarea sobre otra la convierte en subtarea. Visual feedback con DragOverlay. |
+| **Fix DialogTitle** | Agregado `DialogTitle` con clase `sr-only` al Command Palette para accesibilidad. |
+| **Scrollbars** | Estilizadas para modo claro y oscuro. |
+
+### Componentes nuevos:
+- `src/components/theme-provider.tsx` - Contexto de tema con localStorage
+- `src/components/pin-guard.tsx` - Pantalla de bloqueo/desbloqueo con PIN
+
+### Componentes modificados:
+- `src/components/task-dashboard.tsx` - Dark mode classes, DragOverlay, drag-to-subtask
+- `src/components/task-card.tsx` - Dark mode classes, drag overlay styling
+- `src/components/empty-state.tsx` - Dark mode classes
+- `src/app/layout.tsx` - Integra ThemeProvider y PinGuard
+- `src/app/globals.css` - Variables CSS para dark mode, scrollbar styling
+
+### Commit:
+```bash
+git add .
+git commit -m "feat: add dark mode, pin protection and drag-to-subtask"
+```
+
+---
+
 ## 📌 Fase 9: Deploy en Vercel
 
 **Estado:** ⬜ PENDIENTE
