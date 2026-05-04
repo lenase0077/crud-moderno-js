@@ -25,6 +25,8 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const accessCode = process.env.ACCESS_CODE || "314159";
+
   return (
     <html
       lang="es"
@@ -33,7 +35,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <ThemeProvider>
-          <PinGuard>
+          <PinGuard accessCode={accessCode}>
             {children}
           </PinGuard>
           <Toaster position="bottom-right" richColors />

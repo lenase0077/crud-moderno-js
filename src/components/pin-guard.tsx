@@ -2,59 +2,46 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Lock, Unlock, Shield } from "lucide-react";
+import { Lock, Unlock, Shield, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-const PIN_STORAGE_KEY = "taskflow-access-pin";
-const PIN_VERIFIED_KEY = "taskflow-pin-verified";
+const ACCESS_VERIFIED_KEY = "taskflow-access-verified";
 
-export function PinGuard({ children }: { children: React.ReactNode }) {
+interface PinGuardProps {
+  accessCode: string;
+  children: React.ReactNode;
+}
+
+export function PinGuard({ accessCode, children }: PinGuardProps) {
   const [isVerified, setIsVerified] = useState(false);
-  const [hasPin, setHasPin] = useState(false);
-  const [pin, setPin] = useState("");
+  const [code, setCode] = useState("");
   const [error, setError] = useState("");
+  const [showCode, setShowCode] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    const storedPin = localStorage.getItem(PIN_STORAGE_KEY);
-    const verified = localStorage.getItem(PIN_VERIFIED_KEY);
-    if (storedPin) {
-      setHasPin(true);
-      if (verified === "true") {
-        setIsVerified(true);
-      }
+    const verified = localStorage.getItem(ACCESS_VERIFIED_KEY);
+    if (verified === "true") {
+      setIsVerified(true);
     }
   }, []);
 
-  const handleSetPin = () => {
-    if (pin.length < 4) {
-      setError("El PIN debe tener al menos 4 dígitos");
-      return;
-    }
-    localStorage.setItem(PIN_STORAGE_KEY, pin);
-    localStorage.setItem(PIN_VERIFIED_KEY, "true");
-    setHasPin(true);
-    setIsVerified(true);
-    setError("");
-  };
-
-  const handleVerifyPin = () => {
-    const storedPin = localStorage.getItem(PIN_STORAGE_KEY);
-    if (pin === storedPin) {
-      localStorage.setItem(PIN_VERIFIED_KEY, "true");
+  const handleVerify = () => {
+    if (code === accessCode) {
+      localStorage.setItem(ACCESS_VERIFIED_KEY, "true");
       setIsVerified(true);
       setError("");
     } else {
-      setError("PIN incorrecto");
+      setError("Código incorrecto");
     }
   };
 
   const handleLogout = () => {
-    localStorage.removeItem(PIN_VERIFIED_KEY);
+    localStorage.removeItem(ACCESS_VERIFIED_KEY);
     setIsVerified(false);
-    setPin("");
+    setCode("");
   };
 
   if (!mounted) return null;
@@ -83,9 +70,7 @@ export function PinGuard({ children }: { children: React.ReactNode }) {
                   TaskFlow
                 </h2>
                 <p className="text-slate-400 text-sm">
-                  {hasPin
-                    ? "Ingresá tu PIN para continuar"
-                    : "Creá un PIN para proteger tu gestor de tareas"}
+                  Ingresá el código de acceso para continuar
                 </p>
               </div>
 
@@ -94,22 +79,27 @@ export function PinGuard({ children }: { children: React.ReactNode }) {
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                     <Input
-                      type="password"
+                      type={showCode ? "text" : "password"}
                       inputMode="numeric"
                       pattern="[0-9]*"
-                      placeholder={hasPin ? "Ingresá tu PIN" : "Creá un PIN (mín. 4 dígitos)"}
-                      className="pl-10 rounded-xl bg-slate-800 border-slate-700 text-white placeholder:text-slate-500"
-                      value={pin}
+                      placeholder="Código de acceso"
+                      className="pl-10 pr-10 rounded-xl bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 text-center tracking-widest text-lg"
+                      value={code}
                       onChange={(e) => {
-                        setPin(e.target.value);
+                        setCode(e.target.value);
                         setError("");
                       }}
                       onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          hasPin ? handleVerifyPin() : handleSetPin();
-                        }
+                        if (e.key === "Enter") handleVerify();
                       }}
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowCode(!showCode)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                    >
+                      {showCode ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
                   </div>
 
                   {error && (
@@ -123,26 +113,17 @@ export function PinGuard({ children }: { children: React.ReactNode }) {
                   )}
 
                   <Button
-                    onClick={hasPin ? handleVerifyPin : handleSetPin}
+                    onClick={handleVerify}
                     className="w-full rounded-xl bg-white text-slate-900 hover:bg-slate-100 font-medium"
                   >
-                    {hasPin ? (
-                      <>
-                        <Unlock className="w-4 h-4 mr-2" />
-                        Desbloquear
-                      </>
-                    ) : (
-                      <>
-                        <Lock className="w-4 h-4 mr-2" />
-                        Guardar PIN
-                      </>
-                    )}
+                    <Unlock className="w-4 h-4 mr-2" />
+                    Acceder
                   </Button>
                 </div>
               </div>
 
-              <p className="text-center text-slate-500 text-xs mt-6">
-                Este PIN se guarda localmente en tu dispositivo.
+              <p className="text-center text-slate-600 text-xs mt-6">
+                Demo protegida. Solicitá el código de acceso al autor.
               </p>
             </motion.div>
           </motion.div>
@@ -154,8 +135,8 @@ export function PinGuard({ children }: { children: React.ReactNode }) {
           {children}
           <button
             onClick={handleLogout}
-            className="fixed bottom-4 left-4 z-50 p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
-            title="Bloquear (cerrar sesión)"
+            className="fixed bottom-4 left-4 z-50 p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors shadow-sm"
+            title="Bloquear acceso"
           >
             <Lock className="w-4 h-4" />
           </button>
